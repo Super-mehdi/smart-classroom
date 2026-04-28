@@ -1,10 +1,5 @@
 version: "3.9"
 
-# ─────────────────────────────────────────────
-#  Smart Class – Docker Compose
-#  Services: postgres · redis · backend · frontend · cv_worker
-# ─────────────────────────────────────────────
-
 x-logging: &default-logging
   driver: "json-file"
   options:
