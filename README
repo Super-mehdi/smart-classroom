@@ -1,0 +1,7 @@
+# Project Name
+
+Monorepo structure:
+    - backend/
+    - frontend/
+    - cv_worker/
+    - docker/
