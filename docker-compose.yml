@@ -1,0 +1,186 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────
+#  Smart Class – Docker Compose
+#  Services: postgres · redis · backend · frontend · cv_worker
+# ─────────────────────────────────────────────
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+networks:
+  smartclass_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  cv_models:       
+  media_uploads:    
+  backend_static:
+
+services:
+
+  # ── 1. PostgreSQL ────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    <<: *default-restart
+    container_name: smartclass_postgres
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB:-smartclass}
+      POSTGRES_USER:     ${POSTGRES_USER:-smartclass}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - smartclass_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smartclass} -d ${POSTGRES_DB:-smartclass}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging: *default-logging
+
+  # ── 2. Redis ─────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    <<: *default-restart
+    container_name: smartclass_redis
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      --appendonly yes
+      --appendfilename "smartclass.aof"
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - smartclass_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging: *default-logging
+
+  # ── 3. Backend ────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    <<: *default-restart
+    container_name: smartclass_backend
+    env_file: .env
+    environment:
+      DATABASE_URL:  postgresql://${POSTGRES_USER:-smartclass}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-smartclass}
+      REDIS_URL:     redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_BROKER: redis://:${REDIS_PASSWORD}@redis:6379/1
+      MEDIA_ROOT:    /app/media
+      STATIC_ROOT:   /app/static
+    volumes:
+      - media_uploads:/app/media
+      - backend_static:/app/static
+    networks:
+      - smartclass_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8000/api/health/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    logging: *default-logging
+    ports:
+      - "8000:8000"
+
+  # ── 4. Frontend ────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        NEXT_PUBLIC_API_URL:  ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_WS_URL:   ${NEXT_PUBLIC_WS_URL:-ws://localhost:8000}
+    <<: *default-restart
+    container_name: smartclass_frontend
+    env_file: .env
+    networks:
+      - smartclass_net
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:3000/ || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    logging: *default-logging
+    ports:
+      - "3000:3000"
+
+  # ── 5. CV Worker ─
+  cv_worker:
+    build:
+      context: ./cv_worker
+      dockerfile: Dockerfile
+    <<: *default-restart
+    container_name: smartclass_cv_worker
+    env_file: .env
+    environment:
+      CELERY_BROKER:       redis://:${REDIS_PASSWORD}@redis:6379/1
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/2
+      DATABASE_URL:        postgresql://${POSTGRES_USER:-smartclass}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-smartclass}
+      REDIS_URL:           redis://:${REDIS_PASSWORD}@redis:6379/0
+      MODEL_PATH:          /models
+      MEDIA_ROOT:          /app/media
+      # Feature flags
+      ENABLE_ABSENCE_DETECTION: ${ENABLE_ABSENCE_DETECTION:-true}
+      ENABLE_ATTENTION_TRACKER: ${ENABLE_ATTENTION_TRACKER:-true}
+      ATTENTION_INTERVAL_SECONDS: ${ATTENTION_INTERVAL_SECONDS:-5}
+      # Email alerts (forwarded to backend, but worker can trigger)
+      SMTP_HOST:     ${SMTP_HOST}
+      SMTP_PORT:     ${SMTP_PORT:-587}
+      SMTP_USER:     ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+    volumes:
+      - cv_models:/models       
+      - media_uploads:/app/media
+    networks:
+      - smartclass_net
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    # GPU support – uncomment if NVIDIA runtime is available
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A cv_worker inspect ping -d celery@$$HOSTNAME | grep -q pong || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 4
+      start_period: 45s
+    logging: *default-logging
