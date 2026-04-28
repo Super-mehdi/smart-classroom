@@ -1,5 +1,4 @@
 .gitignore
-.gitkeep
 node_modules/
 .env
 dist/
