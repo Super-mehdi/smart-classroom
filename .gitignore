@@ -1,6 +1,7 @@
 .gitignore
 node_modules/
 .env
+.venv
 dist/
 build/
 __pycache__/
