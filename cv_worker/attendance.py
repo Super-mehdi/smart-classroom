@@ -1,23 +1,27 @@
 import os
 import requests
 from datetime import datetime, timezone
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
-def post_attendance(session_id: int, face_count: int, enrolled_count: int):
+def post_attendance(session_id: int, present: list, absent: list):
     """
-    POST face count to the backend attendance endpoint.
+    POST recognized students to the backend attendance endpoint.
+    present/absent: [{"student_id": "S001", "name": "Mehdi"}, ...]
     """
     url = f"{BACKEND_URL}/api/sessions/{session_id}/attendance"
     payload = {
-        "face_count":     face_count,
-        "enrolled_count": enrolled_count,
-        "timestamp":      datetime.now(timezone.utc).isoformat(),
+        "present":   [s["student_id"] for s in present],
+        "absent":    [s["student_id"] for s in absent],
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     try:
         response = requests.post(url, json=payload, timeout=5)
         response.raise_for_status()
-        print(f"Attendance posted: {face_count}/{enrolled_count} present")
+        print(f"Attendance posted: {[s['name'] for s in present]} present")
     except requests.exceptions.ConnectionError:
         print("WARNING: Could not reach backend. Is it running?")
     except requests.exceptions.HTTPError as e:
