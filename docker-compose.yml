@@ -57,6 +57,8 @@ services:
     volumes:
       - mongo_data:/data/db
       - ./infra/mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
+    ports:
+      - "27018:27017"
     networks:
       - smartclass_net
     healthcheck:
@@ -157,55 +159,55 @@ services:
       - "3000:3000"
 
   # ── 6. CV Worker ─────────────────────────────
-  cv_worker:
-    build:
-      context: ./cv_worker
-      dockerfile: Dockerfile
-    <<: *default-restart
-    container_name: smartclass_cv_worker
-    env_file: .env
-    environment:
-      CELERY_BROKER:              redis://:${REDIS_PASSWORD}@redis:6379/1
-      CELERY_RESULT_BACKEND:      redis://:${REDIS_PASSWORD}@redis:6379/2
-      DATABASE_URL:               postgresql://${POSTGRES_USER:-smartclass}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-smartclass}
-      SECRET_KEY: your-super-secret-key-change-in-production
-      MONGO_URI:                  mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB:-smartclass}?authSource=admin   # NEW
-      REDIS_URL:                  redis://:${REDIS_PASSWORD}@redis:6379/0
-      MODEL_PATH:                 /models
-      MEDIA_ROOT:                 /app/media
-      # Feature flags
-      ENABLE_ABSENCE_DETECTION:   ${ENABLE_ABSENCE_DETECTION:-true}
-      ENABLE_ATTENTION_TRACKER:   ${ENABLE_ATTENTION_TRACKER:-true}
-      ATTENTION_INTERVAL_SECONDS: ${ATTENTION_INTERVAL_SECONDS:-5}
-      # Email alerts
-      SMTP_HOST:                  ${SMTP_HOST}
-      SMTP_PORT:                  ${SMTP_PORT:-587}
-      SMTP_USER:                  ${SMTP_USER}
-      SMTP_PASSWORD:              ${SMTP_PASSWORD}
-    volumes:
-      - cv_models:/models
-      - media_uploads:/app/media
-    networks:
-      - smartclass_net
-    depends_on:
-      redis:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      mongodb:                        
-        condition: service_healthy
-    # GPU support – uncomment if NVIDIA runtime is available
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A cv_worker inspect ping -d celery@$$HOSTNAME | grep -q pong || exit 1"]
-      interval: 30s
-      timeout: 15s
-      retries: 4
-      start_period: 45s
-    logging: *default-logging
+  # cv_worker:
+#   build:
+#     context: ./cv_worker
+#     dockerfile: Dockerfile
+#   <<: *default-restart
+#   container_name: smartclass_cv_worker
+#   env_file: .env
+#   environment:
+#     CELERY_BROKER:              redis://:${REDIS_PASSWORD}@redis:6379/1
+#     CELERY_RESULT_BACKEND:      redis://:${REDIS_PASSWORD}@redis:6379/2
+#     DATABASE_URL:               postgresql://${POSTGRES_USER:-smartclass}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-smartclass}
+#     SECRET_KEY: your-super-secret-key-change-in-production
+#     MONGO_URI:                  mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB:-smartclass}?authSource=admin
+#     REDIS_URL:                  redis://:${REDIS_PASSWORD}@redis:6379/0
+#     MODEL_PATH:                 /models
+#     MEDIA_ROOT:                 /app/media
+#     # Feature flags
+#     ENABLE_ABSENCE_DETECTION:   ${ENABLE_ABSENCE_DETECTION:-true}
+#     ENABLE_ATTENTION_TRACKER:   ${ENABLE_ATTENTION_TRACKER:-true}
+#     ATTENTION_INTERVAL_SECONDS: ${ATTENTION_INTERVAL_SECONDS:-5}
+#     # Email alerts
+#     SMTP_HOST:                  ${SMTP_HOST}
+#     SMTP_PORT:                  ${SMTP_PORT:-587}
+#     SMTP_USER:                  ${SMTP_USER}
+#     SMTP_PASSWORD:              ${SMTP_PASSWORD}
+#   volumes:
+#     - cv_models:/models
+#     - media_uploads:/app/media
+#   networks:
+#     - smartclass_net
+#   depends_on:
+#     redis:
+#       condition: service_healthy
+#     postgres:
+#       condition: service_healthy
+#     mongodb:
+#       condition: service_healthy
+#   # GPU support – uncomment if NVIDIA runtime is available
+#   # deploy:
+#   #   resources:
+#   #     reservations:
+#   #       devices:
+#   #         - driver: nvidia
+#   #           count: 1
+#   #           capabilities: [gpu]
+#   healthcheck:
+#     test: ["CMD-SHELL", "celery -A cv_worker inspect ping -d celery@$$HOSTNAME | grep -q pong || exit 1"]
+#     interval: 30s
+#     timeout: 15s
+#     retries: 4
+#     start_period: 45s
+#   logging: *default-logging

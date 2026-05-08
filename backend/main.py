@@ -6,6 +6,8 @@ from routers import example
 from contextlib import asynccontextmanager
 from db.mongo import connect_mongo, disconnect_mongo
 
+from routers.attendance import router as attendance_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -26,6 +28,7 @@ app.add_middleware(
 
 app.include_router(example.router)
 app.include_router(auth_router, prefix="/api")
+app.include_router(attendance_router, prefix="/api")
 
 
 @app.get("/")
