@@ -36,3 +36,16 @@ class FaceEmbedding(BaseModel):
     student_id: str              # e.g. "S042"
     embedding: List[float]       # 512 floats from the face recognition model
     enrolled_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class AttentionLogEntry(BaseModel):
+    student_id: str
+    score: float = Field(..., ge=0.0, le=1.0)
+    yaw: float
+    pitch: float
+    ear: float
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+class AttentionLogBatch(BaseModel):
+    logs: List[AttentionLogEntry]

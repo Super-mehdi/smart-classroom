@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers.auth import router as auth_router
-from routers import example
+from routers import example, attention
 
 from contextlib import asynccontextmanager
 from db.mongo import connect_mongo, disconnect_mongo
@@ -26,12 +26,12 @@ app.add_middleware(
 
 app.include_router(example.router)
 app.include_router(auth_router, prefix="/api")
-
+app.include_router(attention.router)
 
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
 @app.get("/api/health/")
-def health():
+async def health():
     return {"status": "ok"}

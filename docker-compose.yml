@@ -32,6 +32,8 @@ services:
       POSTGRES_DB:       ${POSTGRES_DB:-smartclass}
       POSTGRES_USER:     ${POSTGRES_USER:-smartclass}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    ports:
+      - "5432:5432" 
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -54,6 +56,8 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:?MONGO_USER is required}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?MONGO_PASSWORD is required}
       MONGO_INITDB_DATABASE:      ${MONGO_DB:-smartclass}
+    ports:
+      - "27017:27017"
     volumes:
       - mongo_data:/data/db
       - ./infra/mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
@@ -79,6 +83,8 @@ services:
       --appendfilename "smartclass.aof"
       --maxmemory 512mb
       --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379" 
     volumes:
       - redis_data:/data
     networks:
