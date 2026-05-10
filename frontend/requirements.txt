@@ -1,0 +1,14 @@
+celery
+redis
+httpx
+python-dotenv
+numpy
+opencv-contrib-python
+mediapipe
+matplotlib
+sqlalchemy
+psycopg2-binary
+motor
+pymongo
+python-dateutil
+sounddevice

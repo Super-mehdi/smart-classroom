@@ -25,7 +25,7 @@ aggregator = ScoreAggregator(max_buffer=30)
 detector   = FaceMeshDetector()
 
 # try DroidCam, fall back to webcam
-cap = cv2.VideoCapture("http://192.168.1.102:4747/video")
+cap = cv2.VideoCapture("http://10.72.176.252:4747/video")
 if not cap.isOpened():
     print("DroidCam not available, falling back to webcam index 0")
     cap = cv2.VideoCapture(0)
