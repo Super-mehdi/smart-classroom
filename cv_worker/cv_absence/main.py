@@ -6,7 +6,7 @@ from recognizer import load_embeddings, recognize_frame
 from attendance import post_attendance
 from logger import log_frame
 
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 CAPTURE_INTERVAL = int(os.getenv("CAPTURE_INTERVAL", 10))
 SESSION_ID       = int(os.getenv("SESSION_ID", 0))

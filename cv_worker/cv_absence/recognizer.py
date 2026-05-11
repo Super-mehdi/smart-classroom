@@ -4,7 +4,7 @@ from deepface import DeepFace
 from pymongo import MongoClient
 from dotenv import load_dotenv
 
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 MONGO_URI  = os.getenv("MONGO_URI")
 MONGO_DB   = os.getenv("MONGO_DB")

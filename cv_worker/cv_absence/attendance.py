@@ -3,7 +3,7 @@ import requests
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 

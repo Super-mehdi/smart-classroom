@@ -15,11 +15,12 @@ networks:
 
 volumes:
   postgres_data:
-  mongo_data: 
+  mongo_data:
   redis_data:
   cv_models:
   media_uploads:
   backend_static:
+
 
 services:
 
@@ -29,8 +30,8 @@ services:
     <<: *default-restart
     container_name: smartclass_postgres
     environment:
-      POSTGRES_DB:       ${POSTGRES_DB:-smartclass}
-      POSTGRES_USER:     ${POSTGRES_USER:-smartclass}
+      POSTGRES_DB: ${POSTGRES_DB:-smartclass}
+      POSTGRES_USER: ${POSTGRES_USER:-smartclass}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -38,7 +39,7 @@ services:
     networks:
       - smartclass_net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smartclass} -d ${POSTGRES_DB:-smartclass}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smartclass} -d ${POSTGRES_DB:-smartclass}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -53,7 +54,7 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:?MONGO_USER is required}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?MONGO_PASSWORD is required}
-      MONGO_INITDB_DATABASE:      ${MONGO_DB:-smartclass}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-smartclass}
     volumes:
       - mongo_data:/data/db
       - ./infra/mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro
@@ -62,7 +63,7 @@ services:
     networks:
       - smartclass_net
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      test: [ "CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -75,18 +76,13 @@ services:
     <<: *default-restart
     container_name: smartclass_redis
     command: >
-      redis-server
-      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
-      --appendonly yes
-      --appendfilename "smartclass.aof"
-      --maxmemory 512mb
-      --maxmemory-policy allkeys-lru
+      redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required} --appendonly yes --appendfilename "smartclass.aof" --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     networks:
       - smartclass_net
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -103,12 +99,12 @@ services:
     container_name: smartclass_backend
     env_file: .env
     environment:
-      DATABASE_URL:  postgresql://${POSTGRES_USER:-smartclass}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-smartclass}
-      MONGO_URI:     mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB:-smartclass}?authSource=admin   # NEW
-      REDIS_URL:     redis://:${REDIS_PASSWORD}@redis:6379/0
+      DATABASE_URL: postgresql://${POSTGRES_USER:-smartclass}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-smartclass}
+      MONGO_URI: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB:-smartclass}?authSource=admin # NEW
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       CELERY_BROKER: redis://:${REDIS_PASSWORD}@redis:6379/1
-      MEDIA_ROOT:    /app/media
-      STATIC_ROOT:   /app/static
+      MEDIA_ROOT: /app/media
+      STATIC_ROOT: /app/static
     volumes:
       - media_uploads:/app/media
       - backend_static:/app/static
@@ -117,12 +113,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      mongodb:                        
+      mongodb:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -fs http://localhost:8000/api/health/ || exit 1"]
+      test: [ "CMD-SHELL", "curl -fs http://localhost:8000/api/health/ || exit 1" ]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -139,7 +135,7 @@ services:
       target: production
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
-        NEXT_PUBLIC_WS_URL:  ${NEXT_PUBLIC_WS_URL:-ws://localhost:8000}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:8000}
     <<: *default-restart
     container_name: smartclass_frontend
     env_file: .env
@@ -149,7 +145,7 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -fs http://localhost:3000/ || exit 1"]
+      test: [ "CMD-SHELL", "curl -fs http://localhost:3000/ || exit 1" ]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -158,56 +154,34 @@ services:
     ports:
       - "3000:3000"
 
-  # ── 6. CV Worker ─────────────────────────────
-  # cv_worker:
-#   build:
-#     context: ./cv_worker
-#     dockerfile: Dockerfile
-#   <<: *default-restart
-#   container_name: smartclass_cv_worker
-#   env_file: .env
-#   environment:
-#     CELERY_BROKER:              redis://:${REDIS_PASSWORD}@redis:6379/1
-#     CELERY_RESULT_BACKEND:      redis://:${REDIS_PASSWORD}@redis:6379/2
-#     DATABASE_URL:               postgresql://${POSTGRES_USER:-smartclass}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-smartclass}
-#     SECRET_KEY: your-super-secret-key-change-in-production
-#     MONGO_URI:                  mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB:-smartclass}?authSource=admin
-#     REDIS_URL:                  redis://:${REDIS_PASSWORD}@redis:6379/0
-#     MODEL_PATH:                 /models
-#     MEDIA_ROOT:                 /app/media
-#     # Feature flags
-#     ENABLE_ABSENCE_DETECTION:   ${ENABLE_ABSENCE_DETECTION:-true}
-#     ENABLE_ATTENTION_TRACKER:   ${ENABLE_ATTENTION_TRACKER:-true}
-#     ATTENTION_INTERVAL_SECONDS: ${ATTENTION_INTERVAL_SECONDS:-5}
-#     # Email alerts
-#     SMTP_HOST:                  ${SMTP_HOST}
-#     SMTP_PORT:                  ${SMTP_PORT:-587}
-#     SMTP_USER:                  ${SMTP_USER}
-#     SMTP_PASSWORD:              ${SMTP_PASSWORD}
-#   volumes:
-#     - cv_models:/models
-#     - media_uploads:/app/media
-#   networks:
-#     - smartclass_net
-#   depends_on:
-#     redis:
-#       condition: service_healthy
-#     postgres:
-#       condition: service_healthy
-#     mongodb:
-#       condition: service_healthy
-#   # GPU support – uncomment if NVIDIA runtime is available
-#   # deploy:
-#   #   resources:
-#   #     reservations:
-#   #       devices:
-#   #         - driver: nvidia
-#   #           count: 1
-#   #           capabilities: [gpu]
-#   healthcheck:
-#     test: ["CMD-SHELL", "celery -A cv_worker inspect ping -d celery@$$HOSTNAME | grep -q pong || exit 1"]
-#     interval: 30s
-#     timeout: 15s
-#     retries: 4
-#     start_period: 45s
-#   logging: *default-logging
+  # ── 6. CV Worker (Absence Detection) ────────
+  cv_worker:
+    build:
+      context: ./cv_worker
+      dockerfile: Dockerfile
+      target: production
+    <<: *default-restart
+    container_name: smartclass_cv_worker
+    env_file: .env
+    environment:
+      # Override for Docker-internal networking
+      MONGO_URI: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB:-smartclass}?authSource=admin
+      BACKEND_URL: http://backend:8000
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+    # Pass the host webcam into the container
+    devices:
+      - /dev/video0:/dev/video0
+    group_add:
+      - video
+    volumes:
+      - media_uploads:/app/media
+    networks:
+      - smartclass_net
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    logging: *default-logging

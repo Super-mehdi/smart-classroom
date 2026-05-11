@@ -5,7 +5,7 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 from pathlib import Path
 
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 MONGO_URI  = os.getenv("MONGO_URI")
 MONGO_DB   = os.getenv("MONGO_DB")
@@ -21,7 +21,7 @@ def enroll_all():
         print(f"ERROR: faces/ folder not found at {FACES_DIR}")
         return
 
-    photos = list(FACES_DIR.glob("*.jpg")) + list(FACES_DIR.glob("*.png"))
+    photos = list(FACES_DIR.glob("*.jpg")) + list(FACES_DIR.glob("*.jpeg")) + list(FACES_DIR.glob("*.png"))
     if not photos:
         print("ERROR: No photos found in faces/ folder.")
         return
