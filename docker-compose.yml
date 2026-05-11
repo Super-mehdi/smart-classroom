@@ -185,3 +185,5 @@ services:
       backend:
         condition: service_started
     logging: *default-logging
+    ports:
+      - "5000:5000"

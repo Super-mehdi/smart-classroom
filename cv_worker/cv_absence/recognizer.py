@@ -40,16 +40,27 @@ def recognize_frame(frame) -> dict:
             enforce_detection = True
         )
 
+        bboxes = []
         for r in results:
             embedding = np.array(r["embedding"])
             distances = [_cosine_distance(embedding, k) for k in _known_embeddings]
 
-            if not distances:
-                continue
-
-            best_idx = int(np.argmin(distances))
-            if distances[best_idx] <= THRESHOLD:
-                present_ids.add(_known_ids[best_idx])
+            name_to_draw = "Unknown"
+            
+            if distances:
+                best_idx = int(np.argmin(distances))
+                if distances[best_idx] <= THRESHOLD:
+                    present_ids.add(_known_ids[best_idx])
+                    name_to_draw = _known_names[best_idx]
+            
+            # Extract facial area if available to draw bounding box
+            region = r.get("facial_area", {})
+            x = region.get("x", 0)
+            y = region.get("y", 0)
+            w = region.get("w", 0)
+            h = region.get("h", 0)
+            
+            bboxes.append({"x": x, "y": y, "w": w, "h": h, "name": name_to_draw})
 
     except Exception:
         # No face detected in frame
@@ -63,4 +74,4 @@ def recognize_frame(frame) -> dict:
         else:
             absent.append(entry)
 
-    return {"present": present, "absent": absent}
+    return {"present": present, "absent": absent, "bboxes": bboxes}
