@@ -1,14 +1,14 @@
 import cv2
 import sys
-sys.path.append("../..")
+import time
 
-from attention.facemesh import FaceMeshDetector
-from attention.head_pose import estimate_head_pose
-from attention.ear import get_ear
-from attention.attention_score import compute_attention_score
-from attention.seat_grid import SeatGrid
-from attention.aggregator import ScoreAggregator
-import state
+from cv_worker.attention.facemesh import FaceMeshDetector
+from cv_worker.attention.head_pose import estimate_head_pose
+from cv_worker.attention.ear import get_ear
+from cv_worker.attention.attention_score import compute_attention_score
+from cv_worker.attention.seat_grid import SeatGrid
+from cv_worker.attention.aggregator import ScoreAggregator
+import cv_worker.state as state
 
 # ── config ───────────────────────────────────────────────
 FRAME_W, FRAME_H = 640, 480
@@ -24,23 +24,39 @@ for i, sid in enumerate(student_ids):
 aggregator = ScoreAggregator(max_buffer=30)
 detector   = FaceMeshDetector()
 
-# try DroidCam, fall back to webcam
-cap = cv2.VideoCapture("http://10.72.176.252:4747/video")
-if not cap.isOpened():
-    print("DroidCam not available, falling back to webcam index 0")
-    cap = cv2.VideoCapture(0)
-if not cap.isOpened():
-    print("No camera available, falling back to webcam index 2")
-    cap = cv2.VideoCapture(2)
+
+def open_camera():
+    """Try DroidCam, then webcam fallbacks. Block and retry until one opens."""
+    sources = [
+        ("http://10.72.178.56:4747/video", "DroidCam"),
+        (0, "webcam index 0"),
+        (2, "webcam index 2"),
+    ]
+    while True:
+        for src, label in sources:
+            cap = cv2.VideoCapture(src)
+            if cap.isOpened():
+                print(f"Camera opened: {label}")
+                return cap
+            cap.release()
+        print("No camera available. Retrying in 10 seconds...")
+        time.sleep(10)
+
+
+cap = open_camera()
 
 # ── set active session in Redis ──────────────────────────
 state.set_session(1)
-print("Session started. Press 'q' to quit.")
+print("Session started. Press Ctrl+C to quit.")
 
 while True:
     ret, frame = cap.read()
     if not ret:
-        break
+        print("Camera read failed. Attempting to reopen...")
+        cap.release()
+        time.sleep(3)
+        cap = open_camera()
+        continue
 
     frame   = cv2.resize(frame, (FRAME_W, FRAME_H))
     results = detector.process(frame)
@@ -81,26 +97,6 @@ while True:
                 ear=avg_ear,
             )
 
-            # draw on frame
-            cell = grid.get_cell(nose_x, nose_y)
-            if cell:
-                row, col = cell
-                cell_w   = FRAME_W // COLS
-                cell_h   = FRAME_H // ROWS
-                cx       = col * cell_w + cell_w // 2
-                cy       = row * cell_h + cell_h // 2
-                color    = (int(255 * (1 - score)), int(255 * score), 0)
-
-                cv2.putText(frame, f"{student_id}",
-                            (cx - 30, cy - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
-                cv2.putText(frame, f"{score:.2f}",
-                            (cx - 20, cy + 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
-                cv2.putText(frame, f"y:{yaw:.0f} p:{pitch:.0f}",
-                            (cx - 30, cy + 25),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.3, color, 1)
-
     # feed into aggregator
     aggregator.add_frame_scores(frame_scores)
 
@@ -114,32 +110,8 @@ while True:
             print(f"  {sid}: {avg:.4f}")
         print(f"  Class avg: {class_avg:.4f}\n")
 
-    # draw grid lines
-    for r in range(1, ROWS):
-        cv2.line(frame,
-                 (0, r * FRAME_H // ROWS),
-                 (FRAME_W, r * FRAME_H // ROWS),
-                 (50, 50, 50), 1)
-    for c in range(1, COLS):
-        cv2.line(frame,
-                 (c * FRAME_W // COLS, 0),
-                 (c * FRAME_W // COLS, FRAME_H),
-                 (50, 50, 50), 1)
-
-    # class average overlay
-    if class_avg is not None:
-        cv2.putText(frame, f"Class avg: {class_avg:.2f}",
-                    (10, FRAME_H - 15),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6,
-                    (255, 255, 0), 2)
-
-    cv2.imshow("Seat Grid Aggregator", frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
 # ── cleanup ──────────────────────────────────────────────
 cap.release()
-cv2.destroyAllWindows()
 detector.close()
 aggregator.reset()
 state.clear_session()
