@@ -1,6 +1,19 @@
-opencv-python-headless
-mediapipe
-celery
+# ── absence pipeline ─────────────────────────
+deepface
+tf-keras
+flask
+ultralytics
+requests
+pymongo
+
+# ── attention pipeline ────────────────────────
+mediapipe>=0.10.30
+opencv-contrib-python
+numpy
+
+# ── shared ────────────────────────────────────
+celery[redis]
 redis
 httpx
 python-dotenv
+motor
