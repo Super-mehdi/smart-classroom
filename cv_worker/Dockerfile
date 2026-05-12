@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     libgles2 \
     libegl1 \
+    libv4l-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -12,4 +13,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . ./cv_worker/
+COPY . .
+
+CMD ["python", "main.py"]

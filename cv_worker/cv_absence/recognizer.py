@@ -32,6 +32,7 @@ def _cosine_distance(a, b):
 
 def recognize_frame(frame) -> dict:
     present_ids = set()
+    bboxes = []  # initialize here so it's always defined even if DeepFace throws
 
     try:
         results = DeepFace.represent(
@@ -40,7 +41,7 @@ def recognize_frame(frame) -> dict:
             enforce_detection = True
         )
 
-        bboxes = []
+        bboxes_inner = []
         for r in results:
             embedding = np.array(r["embedding"])
             distances = [_cosine_distance(embedding, k) for k in _known_embeddings]
@@ -53,14 +54,15 @@ def recognize_frame(frame) -> dict:
                     present_ids.add(_known_ids[best_idx])
                     name_to_draw = _known_names[best_idx]
             
-            # Extract facial area if available to draw bounding box
             region = r.get("facial_area", {})
             x = region.get("x", 0)
             y = region.get("y", 0)
             w = region.get("w", 0)
             h = region.get("h", 0)
             
-            bboxes.append({"x": x, "y": y, "w": w, "h": h, "name": name_to_draw})
+            bboxes_inner.append({"x": x, "y": y, "w": w, "h": h, "name": name_to_draw})
+
+        bboxes = bboxes_inner  # only overwrite if DeepFace succeeded
 
     except Exception:
         # No face detected in frame
