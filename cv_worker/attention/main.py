@@ -1,32 +1,27 @@
 import cv2
 import sys
+import os
 import time
 
-from cv_worker.attention.facemesh import FaceMeshDetector
-from cv_worker.attention.head_pose import estimate_head_pose
-from cv_worker.attention.ear import get_ear
-from cv_worker.attention.attention_score import compute_attention_score
-from cv_worker.attention.seat_grid import SeatGrid
-from cv_worker.attention.aggregator import ScoreAggregator
-import cv_worker.state as state
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-# ── config ───────────────────────────────────────────────
+from facemesh import FaceMeshDetector
+from head_pose import estimate_head_pose
+from ear import get_ear
+from attention_score import compute_attention_score
+from aggregator import ScoreAggregator
+from face_id import FaceIdentifier, compute_simple_embedding
+import state
+
+# ── setup ─────────────────────────────────────────────────
 FRAME_W, FRAME_H = 640, 480
-ROWS, COLS       = 3, 4
 
-# ── setup grid ───────────────────────────────────────────
-grid = SeatGrid(rows=ROWS, cols=COLS, frame_w=FRAME_W, frame_h=FRAME_H)
-student_ids = [f"S{str(i).zfill(3)}" for i in range(1, 13)]
-for i, sid in enumerate(student_ids):
-    grid.assign_student(i // COLS, i % COLS, sid)
-
-# ── setup components ─────────────────────────────────────
-aggregator = ScoreAggregator(max_buffer=30)
 detector   = FaceMeshDetector()
+aggregator = ScoreAggregator(max_buffer=30)
+identifier = FaceIdentifier(similarity_threshold=0.92)
 
 
 def open_camera():
-    """Try DroidCam, then webcam fallbacks. Block and retry until one opens."""
     sources = [
         ("http://10.72.178.56:4747/video", "DroidCam"),
         (0, "webcam index 0"),
@@ -44,75 +39,105 @@ def open_camera():
 
 
 cap = open_camera()
-
-# ── set active session in Redis ──────────────────────────
 state.set_session(1)
 print("Session started. Press Ctrl+C to quit.")
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        print("Camera read failed. Attempting to reopen...")
-        cap.release()
-        time.sleep(3)
-        cap = open_camera()
-        continue
+try:
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Camera read failed. Reopening...")
+            cap.release()
+            time.sleep(3)
+            cap = open_camera()
+            continue
 
-    frame   = cv2.resize(frame, (FRAME_W, FRAME_H))
-    results = detector.process(frame)
-    frame_scores = {}
+        frame   = cv2.resize(frame, (FRAME_W, FRAME_H))
+        results = detector.process(frame)
+        frame_scores = {}
 
-    if results:
-        all_landmarks = detector.get_landmarks_array(results, frame.shape)
+        if results:
+            all_landmarks = detector.get_landmarks_array(results, frame.shape)
 
-        for landmarks in all_landmarks:
+            for landmarks in all_landmarks:
 
-            # determine seat from nose tip
-            nose_x, nose_y, _ = landmarks[1]
-            student_id = grid.get_student_id(nose_x, nose_y)
-            if student_id is None:
-                continue
+                # ── identify who this face is ──────────────
+                embedding  = compute_simple_embedding(landmarks)
+                student_id = identifier.identify(embedding)
 
-            # head pose
-            pose = estimate_head_pose(landmarks, FRAME_W, FRAME_H)
-            if pose is None:
-                continue
-            yaw, pitch = pose
+                # ── head pose ──────────────────────────────
+                pose = estimate_head_pose(landmarks, FRAME_W, FRAME_H)
+                if pose is None:
+                    continue
+                yaw, pitch = pose
 
-            # eye aspect ratio
-            _, _, avg_ear = get_ear(landmarks)
-            if avg_ear is None:
-                continue
+                # ── eye aspect ratio ───────────────────────
+                _, _, avg_ear = get_ear(landmarks)
+                if avg_ear is None:
+                    continue
 
-            # attention score
-            score = compute_attention_score(yaw, pitch, avg_ear)
-            frame_scores[student_id] = score
+                # ── attention score ────────────────────────
+                score = compute_attention_score(yaw, pitch, avg_ear)
+                frame_scores[student_id] = score
 
-            # write to Redis shared state
-            state.update(
-                student_id=student_id,
-                score=score,
-                yaw=yaw,
-                pitch=pitch,
-                ear=avg_ear,
-            )
+                # ── update Redis ───────────────────────────
+                state.update(
+                    student_id=student_id,
+                    score=score,
+                    yaw=yaw,
+                    pitch=pitch,
+                    ear=avg_ear,
+                )
 
-    # feed into aggregator
-    aggregator.add_frame_scores(frame_scores)
+                # ── draw on frame ──────────────────────────
+                nose_x, nose_y, _ = landmarks[1]
+                color = (int(255 * (1 - score)), int(255 * score), 0)
 
-    # print rolling averages
-    averages  = aggregator.get_all_averages()
-    class_avg = aggregator.get_class_average()
+                cv2.putText(frame, f"{student_id}",
+                            (nose_x - 40, nose_y - 40),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+                cv2.putText(frame, f"Score: {score:.2f}",
+                            (nose_x - 40, nose_y - 20),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+                cv2.putText(frame, f"y:{yaw:.0f} p:{pitch:.0f} e:{avg_ear:.2f}",
+                            (nose_x - 40, nose_y),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
 
-    if averages:
-        print("Rolling averages:")
-        for sid, avg in averages.items():
-            print(f"  {sid}: {avg:.4f}")
-        print(f"  Class avg: {class_avg:.4f}\n")
+        # ── aggregator ─────────────────────────────────────
+        aggregator.add_frame_scores(frame_scores)
+        averages  = aggregator.get_all_averages()
+        class_avg = aggregator.get_class_average()
 
-# ── cleanup ──────────────────────────────────────────────
-cap.release()
-detector.close()
-aggregator.reset()
-state.clear_session()
-print("Session ended.")
+        if averages:
+            print("Rolling averages:")
+            for sid, avg in averages.items():
+                print(f"  {sid}: {avg:.4f}")
+            if class_avg:
+                print(f"  Class avg: {class_avg:.4f}\n")
+
+        # ── overlays ───────────────────────────────────────
+        if class_avg is not None:
+            cv2.putText(frame, f"Class avg: {class_avg:.2f}",
+                        (10, FRAME_H - 15),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6,
+                        (255, 255, 0), 2)
+
+        cv2.putText(frame, f"Tracked: {identifier.get_enrolled_count()} face(s)",
+                    (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6,
+                    (255, 255, 255), 2)
+
+        cv2.imshow("Attention Tracker", frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+except KeyboardInterrupt:
+    print("Stopped by user.")
+
+finally:
+    cap.release()
+    cv2.destroyAllWindows()
+    detector.close()
+    aggregator.reset()
+    state.clear_session()
+    print("Session ended.")

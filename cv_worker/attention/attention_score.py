@@ -2,10 +2,10 @@ from typing import Optional
 
 
 # thresholds
-EAR_THRESHOLD  = 0.2   # below this = eyes closed
-YAW_MAX        = 45.0  # degrees — full yaw penalty at this angle
-PITCH_MAX      = 30.0  # degrees — full pitch penalty at this angle
-DROWSY_PENALTY = 0.3   # multiplier when eyes are closed
+EAR_THRESHOLD  = 0.12 
+YAW_MAX        = 45.0
+PITCH_MAX      = 30.0
+DROWSY_PENALTY = 0.5
 
 
 def compute_attention_score(
