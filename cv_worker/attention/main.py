@@ -111,6 +111,7 @@ try:
         if averages:
             print("Rolling averages:")
             for sid, avg in averages.items():
+                print(f"  yaw={yaw:.1f} pitch={pitch:.1f} ear={avg_ear:.3f} score={score:.4f}")
                 print(f"  {sid}: {avg:.4f}")
             if class_avg:
                 print(f"  Class avg: {class_avg:.4f}\n")

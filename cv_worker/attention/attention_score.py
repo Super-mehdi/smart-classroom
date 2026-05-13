@@ -2,10 +2,12 @@ from typing import Optional
 
 
 # thresholds
-EAR_THRESHOLD  = 0.12 
-YAW_MAX        = 45.0
-PITCH_MAX      = 30.0
+EAR_THRESHOLD  = 0.12
+YAW_MAX        = 60.0
+PITCH_MAX      = 40.0
 DROWSY_PENALTY = 0.5
+YAW_OFFSET     = -18.0   # calibrate to your camera angle
+PITCH_OFFSET   = 0.0
 
 
 def compute_attention_score(
@@ -13,30 +15,16 @@ def compute_attention_score(
     pitch: float,
     ear: float,
 ) -> float:
-    """
-    Computes attention score for a single student in a single frame.
+    # correct for camera angle
+    corrected_yaw   = yaw - YAW_OFFSET
+    corrected_pitch = pitch - PITCH_OFFSET
 
-    Args:
-        yaw:   head rotation left/right in degrees
-        pitch: head rotation up/down in degrees
-        ear:   average eye aspect ratio (both eyes)
-
-    Returns:
-        float between 0.0 (not attentive) and 1.0 (fully attentive)
-    """
-
-    # part 1 — head direction score
-    head_score = 1.0 - (abs(yaw) / YAW_MAX) - (abs(pitch) / PITCH_MAX)
-
-    # clamp to [0.0, 1.0] — can't go negative or above 1
+    head_score = 1.0 - (abs(corrected_yaw) / YAW_MAX) - (abs(corrected_pitch) / PITCH_MAX)
     head_score = max(0.0, min(1.0, head_score))
 
-    # part 2 — drowsiness multiplier
     eye_multiplier = 1.0 if ear > EAR_THRESHOLD else DROWSY_PENALTY
 
-    # final score
     score = head_score * eye_multiplier
-
     return round(score, 4)
 
 
