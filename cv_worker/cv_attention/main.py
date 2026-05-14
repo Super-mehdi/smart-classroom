@@ -2,12 +2,12 @@ import cv2
 import sys
 import time
 
-from cv_worker.attention.facemesh import FaceMeshDetector
-from cv_worker.attention.head_pose import estimate_head_pose
-from cv_worker.attention.ear import get_ear
-from cv_worker.attention.attention_score import compute_attention_score
-from cv_worker.attention.seat_grid import SeatGrid
-from cv_worker.attention.aggregator import ScoreAggregator
+from cv_worker.cv_attention.facemesh import FaceMeshDetector
+from cv_worker.cv_attention.head_pose import estimate_head_pose
+from cv_worker.cv_attention.ear import get_ear
+from cv_worker.cv_attention.attention_score import compute_attention_score
+from cv_worker.cv_attention.seat_grid import SeatGrid
+from cv_worker.cv_attention.aggregator import ScoreAggregator
 import cv_worker.state as state
 
 # ── config ───────────────────────────────────────────────
