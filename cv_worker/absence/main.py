@@ -52,7 +52,7 @@ def main_loop():
     print(f"Starting camera loop for session {SESSION_ID}")
     print(f"Sampling every {CAPTURE_INTERVAL} seconds")
 
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture("http://10.168.37.95:4747/video")
     if not cap.isOpened():
         print("ERROR: Could not open camera. Exiting.")
         return
