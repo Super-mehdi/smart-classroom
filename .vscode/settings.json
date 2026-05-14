@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "./cv_worker/cv_",
+        "./cv_worker/cv_"
+    ]
+}
