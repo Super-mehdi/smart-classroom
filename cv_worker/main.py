@@ -1,5 +1,3 @@
-# cv_worker/main.py
-
 import cv2
 import sys
 import os
@@ -72,7 +70,7 @@ def get_cached_student_id(
 
 def open_camera():
     sources = [
-        ("http://10.72.178.56:4747/video", "DroidCam"),
+        ("http://10.168.37.95:4747/video", "DroidCam"),
         (0, "webcam index 0"),
         (2, "webcam index 2"),
     ]
