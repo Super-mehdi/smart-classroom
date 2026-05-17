@@ -54,6 +54,24 @@ export async function stopSession(sessionId, token) {
   }, token);
 }
 
+export async function startCVPipeline(sessionId, token) {
+  try {
+    return await apiFetch(`/api/sessions/${sessionId}/cv/start`, { method: "POST" }, token);
+  } catch (error) {
+    console.warn("Backend CV start failed, trying local server:", error);
+    return fetch("http://localhost:5001/start", { method: "POST" });
+  }
+}
+
+export async function stopCVPipeline(sessionId, token) {
+  try {
+    return await apiFetch(`/api/sessions/${sessionId}/cv/stop`, { method: "POST" }, token);
+  } catch (error) {
+    console.warn("Backend CV stop failed, trying local server:", error);
+    return fetch("http://localhost:5001/stop", { method: "POST" });
+  }
+}
+
 export async function createUser({ name, email, password, role }, token) {
   return apiFetch("/api/auth/signup", {
     method: "POST",

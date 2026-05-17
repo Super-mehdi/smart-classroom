@@ -1,8 +1,17 @@
 
 
 export function AttentionGauge({ scores }) {
-    const averageScore = scores.reduce((a, b) => a + b.score, 0) / scores.length;
-    if (Object.values(scores).length === 0) return null;
+    if (!scores || !Array.isArray(scores) || scores.length === 0) {
+        return (
+            <div className="attention-gauge">
+                <h2>Attention Gauge</h2>
+                <p>Waiting for data...</p>
+            </div>
+        );
+    }
+    const averageScore = scores && scores.length > 0 
+        ? scores.reduce((a, b) => a + (b.score || 0), 0) / scores.length 
+        : 0;
     const circumference = 251;
     const offset = circumference * (1 - averageScore);
 

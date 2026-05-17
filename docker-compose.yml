@@ -168,19 +168,20 @@ services:
     env_file: .env
     environment:
       MONGO_URI:    mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB:-smartclass}?authSource=admin
-      BACKEND_URL:  http://backend:8000
+      BACKEND_URL:  ${BACKEND_URL}
       REDIS_URL:    redis://:${REDIS_PASSWORD}@redis:6379/0
       CELERY_BROKER: redis://:${REDIS_PASSWORD}@redis:6379/1
       # DroidCam WiFi: use your phone's IP directly, e.g. http://192.168.x.x:4747/video
       # DroidCam USB:  use http://host.docker.internal:4747/video
       CAMERA_URL:   ${CAMERA_URL:-http://host.docker.internal:4747/video}
+      WORKER_EMAIL: ${WORKER_EMAIL}
+      WORKER_PASSWORD: ${WORKER_PASSWORD}
+      HEADLESS:     "true"
+    command: ["celery", "-A", "celery_app", "worker", "--loglevel=info"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    # Uncomment the two lines below only when a physical webcam is connected:
     devices:
       - /dev/video0:/dev/video0
-    group_add:
-      - video
     volumes:
       - media_uploads:/app/media
       - deepface_models:/root/.deepface/weights
@@ -193,8 +194,33 @@ services:
         condition: service_healthy
       backend:
         condition: service_started
-    ports:
-      - "5000:5000"
+    logging: *default-logging
+
+  cv_beat:
+    build:
+      context: ./cv_worker
+      dockerfile: Dockerfile
+    <<: *default-restart
+    container_name: smartclass_cv_beat
+    env_file: .env
+    environment:
+      MONGO_URI:    mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB:-smartclass}?authSource=admin
+      BACKEND_URL:  ${BACKEND_URL}
+      REDIS_URL:    redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_BROKER: redis://:${REDIS_PASSWORD}@redis:6379/1
+      CAMERA_URL:   ${CAMERA_URL:-http://host.docker.internal:4747/video}
+      WORKER_EMAIL: ${WORKER_EMAIL}
+      WORKER_PASSWORD: ${WORKER_PASSWORD}
+    command: ["celery", "-A", "celery_app", "beat", "--loglevel=info"]
+    networks:
+      - smartclass_net
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      backend:
+        condition: service_started
     logging: *default-logging
 
   # ── 7. Attention Celery worker ────────────────

@@ -2,7 +2,9 @@ import cv2
 import sys
 import os
 import time
+import threading
 from dotenv import load_dotenv
+from session_manager import session_manager
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
@@ -21,20 +23,21 @@ from cv_attention.face_id import FaceIdentifier, compute_simple_embedding
 import state
 
 # ── config ────────────────────────────────────────────
-SESSION_ID       = int(os.getenv("SESSION_ID", 1))
 ABSENCE_INTERVAL = int(os.getenv("CAPTURE_INTERVAL", 10))
 FRAME_W, FRAME_H = 640, 480
+HEADLESS         = os.getenv("HEADLESS", "false").lower() == "true"
 
 # ── setup ─────────────────────────────────────────────
-print(f"Starting unified CV worker — session {SESSION_ID}")
+print(f"Starting unified CV worker (Headless: {HEADLESS})")
+
+t = threading.Thread(target=session_manager.start, daemon=True)
+t.start()
 
 load_embeddings()
 
 detector   = FaceMeshDetector()
 aggregator = ScoreAggregator(max_buffer=30)
 identifier = FaceIdentifier(similarity_threshold=0.80)
-
-state.set_session(SESSION_ID)
 
 # face identity cache — maps grid cell → student_id
 # persists between absence checks so we don't lose identity
@@ -85,7 +88,7 @@ def open_camera():
         time.sleep(10)
 
 
-cap               = open_camera()
+cap               = None
 frame_id          = 0
 last_absence_time = 0
 last_bboxes       = []
@@ -95,12 +98,25 @@ print(f"Absence check every {ABSENCE_INTERVAL}s. Press Ctrl+C to stop.")
 
 try:
     while True:
+        sid = session_manager.session_id
+        if sid is None:
+            if cap is not None:
+                print("No active session. Closing camera.")
+                cap.release()
+                cap = None
+            time.sleep(1)
+            continue
+
+        if cap is None:
+            print(f"Active session detected: {sid}. Opening camera...")
+            cap = open_camera()
+
         ret, frame = cap.read()
         if not ret:
             print("Camera read failed. Reopening...")
             cap.release()
+            cap = None
             time.sleep(3)
-            cap = open_camera()
             continue
 
         frame        = cv2.resize(frame, (FRAME_W, FRAME_H))
@@ -120,8 +136,9 @@ try:
                   f"Present: {[s['name'] for s in present]} | "
                   f"Absent:  {[s['name'] for s in absent]}")
 
-            post_attendance(SESSION_ID, present, absent)
-            log_frame(SESSION_ID, frame_id,
+            state.set_session(sid)
+            post_attendance(sid, present, absent)
+            log_frame(sid, frame_id,
                       len(present), len(present) + len(absent))
             frame_id += 1
 
@@ -211,21 +228,26 @@ try:
                         (255, 255, 0), 2)
 
         cv2.putText(frame,
-                    f"Session {SESSION_ID} | "
+                    f"Session {sid} | "
                     f"Faces: {identifier.get_enrolled_count()}",
                     (10, 25),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                     (255, 255, 255), 1)
 
-        cv2.imshow("SmartClass CV Worker", frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        if not HEADLESS:
+            cv2.imshow("SmartClass CV Worker", frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+        else:
+            # Just a tiny sleep to not hog CPU if no imshow
+            time.sleep(0.01)
 
 except KeyboardInterrupt:
     print("Stopped by user.")
 
 finally:
-    cap.release()
+    if cap is not None:
+        cap.release()
     cv2.destroyAllWindows()
     detector.close()
     aggregator.reset()
