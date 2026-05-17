@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, status
 from datetime import datetime, timedelta
-
 from schemas.schemas import AttentionLogBatch
 from db.mongo import get_mongo_db
+from tasks.alert_tasks import check_attention_alert
 
 router = APIRouter(
     prefix="/sessions",
@@ -16,7 +16,7 @@ router = APIRouter(
 )
 async def post_attention_logs(
     session_id: int,
-    batch: AttentionLogBatch,
+    batch:      AttentionLogBatch,
 ):
     if not batch.logs:
         raise HTTPException(
@@ -41,6 +41,9 @@ async def post_attention_logs(
 
     result = await db["attention_logs"].insert_many(documents)
 
+    # fire and forget — check attention threshold
+    check_attention_alert.delay(session_id)
+
     return {
         "inserted":   len(result.inserted_ids),
         "session_id": session_id,
@@ -49,28 +52,18 @@ async def post_attention_logs(
 
 @router.get("/{session_id}/attention/latest")
 async def get_latest_attention(session_id: int):
-    """
-    Returns the latest attention score per student
-    from the last 1 second of logs.
-    Used by the frontend for the live attention view.
-    """
-    db             = get_mongo_db()
-    now            = datetime.utcnow()
-    one_second_ago = now - timedelta(seconds=10)
+    db     = get_mongo_db()
+    now    = datetime.utcnow()
+    cutoff = now - timedelta(seconds=10)
 
     pipeline = [
-        # filter to this session and last 1 second
         {
             "$match": {
                 "session_id": session_id,
-                "ts": {"$gte": one_second_ago},
+                "ts": {"$gte": cutoff},
             }
         },
-        # sort oldest to newest
-        {
-            "$sort": {"ts": 1}
-        },
-        # group by student, keep the latest entry
+        {"$sort": {"ts": 1}},
         {
             "$group": {
                 "_id":   "$student_id",
@@ -81,7 +74,6 @@ async def get_latest_attention(session_id: int):
                 "ts":    {"$last": "$ts"},
             }
         },
-        # reshape output
         {
             "$project": {
                 "_id":        0,
@@ -93,10 +85,7 @@ async def get_latest_attention(session_id: int):
                 "ts":         1,
             }
         },
-        # sort by student_id for consistent ordering
-        {
-            "$sort": {"student_id": 1}
-        },
+        {"$sort": {"student_id": 1}},
     ]
 
     results = await db["attention_logs"].aggregate(pipeline).to_list(length=100)
@@ -104,7 +93,7 @@ async def get_latest_attention(session_id: int):
     if not results:
         return {
             "session_id":  session_id,
-            "window_secs": 1,
+            "window_secs": 10,
             "students":    [],
             "class_avg":   None,
         }
@@ -114,7 +103,7 @@ async def get_latest_attention(session_id: int):
 
     return {
         "session_id":  session_id,
-        "window_secs": 1,
+        "window_secs": 10,
         "students":    results,
         "class_avg":   class_avg,
     }

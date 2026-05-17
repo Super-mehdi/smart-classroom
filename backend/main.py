@@ -9,7 +9,10 @@ from routers.attendance import router as attendance_router
 from routers import attention
 from routers.ws import router as ws_router, broadcaster
 import asyncio
-
+from routers.debug import router as debug_router
+from routers.alert_config import router as alert_config_router
+from routers.alert_history import router as alert_history_router
+from routers.analytics import router as analytics_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,7 +46,10 @@ app.include_router(auth_router,       prefix="/api")
 app.include_router(attendance_router)
 app.include_router(attention.router)
 app.include_router(ws_router)
-
+app.include_router(debug_router)
+app.include_router(alert_config_router, prefix="/api")
+app.include_router(alert_history_router, prefix="/api")
+app.include_router(analytics_router, prefix="/api")
 
 @app.get("/api/health/")
 async def health():

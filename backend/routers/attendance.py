@@ -3,31 +3,31 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from datetime import datetime, timezone
 from typing import List
-
 from db.session import get_db
 from models import AttendanceRecord, AttendanceStatus, Session as ClassSession
-
+from tasks.alert_tasks import check_absence_alert
 
 router = APIRouter(
-    prefix="/api/sessions",
+    prefix="/sessions",
     tags=["attendance"],
 )
 
 
 class AttendanceBatch(BaseModel):
-    present: List[str]   # list of student_id strings
-    absent: List[str]
+    present:   List[str]
+    absent:    List[str]
     timestamp: datetime = None
 
 
 @router.post("/{session_id}/attendance", status_code=status.HTTP_201_CREATED)
 def post_attendance(
     session_id: int,
-    batch: AttendanceBatch,
-    db: Session = Depends(get_db),
+    batch:      AttendanceBatch,
+    db:         Session = Depends(get_db),
 ):
-    # verify session exists
-    session = db.query(ClassSession).filter(ClassSession.id == session_id).first()
+    session = db.query(ClassSession).filter(
+        ClassSession.id == session_id
+    ).first()
     if not session:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -35,8 +35,8 @@ def post_attendance(
         )
 
     ts = batch.timestamp or datetime.now(timezone.utc)
-
     records = []
+
     for student_id in batch.present:
         records.append(AttendanceRecord(
             session_id=session_id,
@@ -44,6 +44,7 @@ def post_attendance(
             status=AttendanceStatus.present,
             timestamp=ts,
         ))
+
     for student_id in batch.absent:
         records.append(AttendanceRecord(
             session_id=session_id,
@@ -54,6 +55,9 @@ def post_attendance(
 
     db.add_all(records)
     db.commit()
+
+    # fire and forget — check absence threshold
+    check_absence_alert.delay(session_id, batch.present, batch.absent)
 
     return {
         "session_id": session_id,
@@ -66,7 +70,7 @@ def post_attendance(
 @router.get("/{session_id}/attendance")
 def get_attendance(
     session_id: int,
-    db: Session = Depends(get_db),
+    db:         Session = Depends(get_db),
 ):
     records = (
         db.query(AttendanceRecord)

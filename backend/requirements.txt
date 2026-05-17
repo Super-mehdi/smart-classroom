@@ -12,6 +12,8 @@ bcrypt
 pydantic[email]
 celery
 redis
+celery[redis]
+secure-smtplib
 httpx
 email-validator
 passlib

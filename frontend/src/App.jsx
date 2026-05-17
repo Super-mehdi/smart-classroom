@@ -3,6 +3,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import Home from "../pages/Home";
 import Auth from "../pages/Auth";
 import LiveView from "../pages/LiveView";
+import AlertConfigPage from "../pages/AlertConfigPage";
 
 function App() {
   return (
@@ -17,8 +18,16 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route
+          path="/classes/:classId/alert-config"
+          element={
+            <ProtectedRoute>
+              <AlertConfigPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/live/:sessionId" element={<LiveView />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
