@@ -1,9 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import ProtectedRoute from "../components/ProtectedRoute";
-import Home from "../pages/Home";
-import Auth from "../pages/Auth";
-import LiveView from "../pages/LiveView";
-import AlertConfigPage from "../pages/AlertConfigPage";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Home from "./pages/Home";
+import Sessions from "./pages/Sessions";
+import Students from "./pages/Students";
+import Admin from "./pages/Admin";
+import Auth from "./pages/Auth";
+import LiveView from "./pages/LiveView";
+import Layout from "./components/Layout";
 
 function App() {
   return (
@@ -14,18 +17,15 @@ function App() {
           path="/"
           element={
             <ProtectedRoute>
-              <Home />
+              <Layout />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/classes/:classId/alert-config"
-          element={
-            <ProtectedRoute>
-              <AlertConfigPage />
-            </ProtectedRoute>
-          }
-        />
+        >
+          <Route index element={<Home />} />
+          <Route path="sessions" element={<Sessions />} />
+          <Route path="students" element={<Students />} />
+          <Route path="admin" element={<Admin />} />
+        </Route>
         <Route path="/live/:sessionId" element={<LiveView />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

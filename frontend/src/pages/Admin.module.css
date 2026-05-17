@@ -1,0 +1,262 @@
+.container {
+  padding: 24px;
+}
+
+.pageTitle {
+  font-size: 24px;
+  font-weight: 400;
+  color: #202124;
+  margin-bottom: 24px;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 32px;
+}
+
+.tab {
+  padding: 12px 24px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #5f6368;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.tab:hover {
+  color: #1a73e8;
+}
+
+.activeTab {
+  color: #1a73e8;
+}
+
+.activeTab::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: #1a73e8;
+  border-radius: 3px 3px 0 0;
+}
+
+/* Section & Cards */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.card {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15);
+}
+
+.cardTitle {
+  font-size: 18px;
+  font-weight: 500;
+  color: #202124;
+  margin-bottom: 24px;
+}
+
+/* Forms */
+.form {
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.inlineForm {
+  max-width: 100%;
+  flex-direction: row;
+  align-items: flex-end;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.formGroup label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #5f6368;
+}
+
+.formGroup input, .formGroup select {
+  padding: 10px 12px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.formGroup input:focus, .formGroup select:focus {
+  border-color: #1a73e8;
+}
+
+.primaryButton {
+  background-color: #1a73e8;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  height: 40px;
+}
+
+.primaryButton:hover {
+  background-color: #1557b0;
+}
+
+/* Table */
+.tableCard {
+  overflow: hidden;
+  padding: 0;
+}
+
+.tableCard .cardTitle {
+  padding: 24px 24px 0;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+.table th {
+  text-align: left;
+  padding: 12px 24px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+  color: #5f6368;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.table td {
+  padding: 16px 24px;
+  border-bottom: 1px solid #f1f3f4;
+  color: #202124;
+  font-size: 14px;
+}
+
+.roleBadge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.teacher {
+  background-color: #e8f0fe;
+  color: #1a73e8;
+}
+
+.superuser {
+  background-color: #fef7e0;
+  color: #f9ab00;
+}
+
+/* Student Grid */
+.studentGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.studentCard {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.studentInfo h3 {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+  color: #202124;
+}
+
+.studentInfo p {
+  font-size: 14px;
+  color: #5f6368;
+  margin: 4px 0 0;
+}
+
+.studentActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.statusBadge {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+.enrolled {
+  background-color: #e6f4ea;
+  color: #1e8e3e;
+}
+
+.notEnrolled {
+  background-color: #f1f3f4;
+  color: #5f6368;
+}
+
+.uploadButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: 1px solid #dadce0;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a73e8;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.uploadButton:hover {
+  background-color: #f8f9fa;
+}
+
+.uploadButton span {
+  font-size: 18px;
+}
+
+.unauthorized {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  font-size: 18px;
+  color: #d93025;
+}

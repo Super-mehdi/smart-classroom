@@ -13,6 +13,8 @@ from routers.debug import router as debug_router
 from routers.alert_config import router as alert_config_router
 from routers.alert_history import router as alert_history_router
 from routers.analytics import router as analytics_router
+from routers.sessions import router as sessions_router
+from routers.classes import router as classes_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -50,6 +52,8 @@ app.include_router(debug_router)
 app.include_router(alert_config_router, prefix="/api")
 app.include_router(alert_history_router, prefix="/api")
 app.include_router(analytics_router, prefix="/api")
+app.include_router(classes_router, prefix="/api")
+app.include_router(sessions_router, prefix="/api")
 
 @app.get("/api/health/")
 async def health():

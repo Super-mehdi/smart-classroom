@@ -1,0 +1,154 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+.container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+  font-family: 'Roboto', 'Inter', sans-serif;
+  overflow: hidden;
+}
+
+.leftColumn {
+  flex: 0 0 45%;
+  background-color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 0 48px;
+  box-sizing: border-box;
+}
+
+.rightColumn {
+  flex: 0 0 55%;
+  background-color: #e8f0fe;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.formWrapper {
+  width: 100%;
+  max-width: 400px;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a73e8;
+  margin-bottom: 40px;
+}
+
+.welcomeHeading {
+  font-size: 32px;
+  font-weight: 400;
+  color: #202124;
+  margin: 0 0 8px 0;
+}
+
+.subtitle {
+  font-size: 16px;
+  color: #5f6368;
+  margin-bottom: 32px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.input {
+  border: none;
+  border-bottom: 1px solid #dadce0;
+  padding: 8px 0;
+  font-size: 16px;
+  color: #202124;
+  outline: none;
+  background: transparent;
+  transition: border-color 0.2s;
+}
+
+.input:focus {
+  border-bottom: 2px solid #1a73e8;
+  padding-bottom: 7px;
+}
+
+.input::placeholder {
+  color: #70757a;
+}
+
+.roleSelect {
+  border: none;
+  border-bottom: 1px solid #dadce0;
+  padding: 8px 0;
+  font-size: 16px;
+  color: #202124;
+  outline: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.submitButton {
+  background-color: #1a73e8;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.submitButton:hover {
+  background-color: #1557b0;
+  box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+}
+
+.submitButton:disabled {
+  background-color: #dadce0;
+  cursor: default;
+}
+
+.toggleWrapper {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 14px;
+  color: #5f6368;
+}
+
+.toggleLink {
+  color: #1a73e8;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-left: 4px;
+}
+
+.toggleLink:hover {
+  text-decoration: underline;
+}
+
+.error {
+  color: #d93025;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.illustration {
+  width: 80%;
+  height: auto;
+  max-width: 600px;
+}

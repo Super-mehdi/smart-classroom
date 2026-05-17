@@ -12,7 +12,7 @@ def post_attendance(session_id: int, present: list, absent: list):
     POST recognized students to the backend attendance endpoint.
     present/absent: [{"student_id": "S001", "name": "Mehdi"}, ...]
     """
-    url = f"{BACKEND_URL}/api/sessions/{session_id}/attendance"
+    url = f"{BACKEND_URL}/sessions/{session_id}/attendance"
     payload = {
         "present":   [s["student_id"] for s in present],
         "absent":    [s["student_id"] for s in absent],
