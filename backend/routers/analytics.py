@@ -212,68 +212,34 @@ async def get_student_analytics(
 ):
     mongo_db = get_mongo_db()
 
-    # attendance from PostgreSQL
-    records = db.query(AttendanceRecord).filter(
-        AttendanceRecord.student_id == student_id
-    ).order_by(AttendanceRecord.timestamp.desc()).all()
+    # 1. Get total sessions to calculate attendance rate
+    total_sessions = db.query(ClassSession).count()
+    if total_sessions == 0:
+        return {"student_id": student_id, "attendance": 0, "avgAttention": 0}
 
-    total    = len(records)
-    present  = sum(1 for r in records if r.status == AttendanceStatus.present)
-    att_rate = round(present / total, 4) if total > 0 else None
+    # 2. Get sessions where this student was present
+    # We define presence as having at least one attendance record marked 'present' for this student in the session
+    present_session_ids = db.query(AttendanceRecord.session_id).filter(
+        AttendanceRecord.student_id == student_id,
+        AttendanceRecord.status == AttendanceStatus.present
+    ).distinct()
+    
+    attendance_rate = (len(list(present_session_ids)) / total_sessions) * 100
 
-    # attention trend from MongoDB — avg per session
+    # 3. Get average attention across all sessions for this student
     pipeline = [
         {"$match": {"student_id": student_id}},
-        {
-            "$group": {
-                "_id":       "$session_id",
-                "avg_score": {"$avg": "$score"},
-                "count":     {"$sum": 1},
-            }
-        },
-        {"$sort": {"_id": -1}},
-        {"$limit": 30},
-        {
-            "$project": {
-                "_id":        0,
-                "session_id": "$_id",
-                "avg_score":  {"$round": ["$avg_score", 4]},
-                "count":      1,
-            }
-        },
+        {"$group": {"_id": "$session_id", "avg_score": {"$avg": "$score"}}},
+        {"$group": {"_id": None, "total_avg": {"$avg": "$avg_score"}}}
     ]
-
-    attention_per_session = await mongo_db["attention_logs"].aggregate(
-        pipeline
-    ).to_list(length=30)
-
-    overall_avg = None
-    trend       = None
-    if attention_per_session:
-        scores      = [s["avg_score"] for s in attention_per_session]
-        overall_avg = round(sum(scores) / len(scores), 4)
-
-        # trend: compare last 5 sessions vs previous 5
-        if len(scores) >= 10:
-            recent   = sum(scores[:5])  / 5
-            previous = sum(scores[5:10]) / 5
-            trend    = round(recent - previous, 4)
+    result = await mongo_db["attention_logs"].aggregate(pipeline).to_list(length=1)
+    avg_attention = result[0]["total_avg"] if result else 0
 
     return {
         "student_id": student_id,
-        "attendance": {
-            "total":   total,
-            "present": present,
-            "absent":  total - present,
-            "rate":    att_rate,
-        },
-        "attention": {
-            "overall_avg":        overall_avg,
-            "trend":              trend,
-            "per_session":        attention_per_session,
-        },
+        "attendance": round(attendance_rate, 2),
+        "avgAttention": round(avg_attention, 4)
     }
-
 
 # ── 4. GET /analytics/overview (superuser only) ───────────
 @router.get("/overview")
