@@ -77,6 +77,7 @@ def list_sessions(
         SessionListItem(
             session_id=s.id,
             class_id=s.class_id,
+            class_name=s.class_.name,
             started_at=s.started_at,
             ended_at=s.ended_at
         ) for s in sessions

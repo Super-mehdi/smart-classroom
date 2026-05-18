@@ -1,4 +1,4 @@
-import os
+import logging
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -11,6 +11,8 @@ from models import (
 )
 from core.dependencies import get_current_user
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
@@ -21,53 +23,80 @@ async def get_session_analytics(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    logger.info(f"Analytics request for session {session_id}")
     # verify session exists
     session = db.query(ClassSession).filter(
         ClassSession.id == session_id
     ).first()
     if not session:
+        logger.warning(f"Session {session_id} not found")
         raise HTTPException(status_code=404, detail="Session not found")
 
     # ── attendance from PostgreSQL ────────────────────────
+    # Get all unique student IDs from the database
+    mongo_db = get_mongo_db()
+    cursor = mongo_db["face_embeddings"].find({}, {"student_id": 1, "name": 1})
+    all_enrolled = await cursor.to_list(length=None)
+    enrolled_ids = {s["student_id"]: s.get("name", s["student_id"]) for s in all_enrolled}
+    
+    # Get all records for this session
     records = db.query(AttendanceRecord).filter(
         AttendanceRecord.session_id == session_id
     ).all()
 
-    total    = len(records)
-    present  = sum(1 for r in records if r.status == AttendanceStatus.present)
+    # Determine unique presence
+    present_ids = {r.student_id for r in records if r.status == AttendanceStatus.present}
+    
+    # Join with attendance logs for attention score
+    attn_pipeline = [
+        {"$match": {"session_id": session_id}},
+        {"$group": {
+            "_id": "$student_id",
+            "avg_score": {"$avg": "$score"}
+        }}
+    ]
+    attn_results = await mongo_db["attention_logs"].aggregate(attn_pipeline).to_list(length=100)
+    attn_map = {r["_id"]: r["avg_score"] for r in attn_results}
+
+    # Calculate summary
+    attendance_summary = []
+    for sid, name in enrolled_ids.items():
+        is_present = sid in present_ids
+        attendance_summary.append({
+            "student_id": sid,
+            "name": name,
+            "status": "Present" if is_present else "Absent",
+            "score": attn_map.get(sid, 0)
+        })
+
+    total    = len(enrolled_ids)
+    present  = len(present_ids)
     absent   = total - present
     att_rate = round(present / total, 4) if total > 0 else None
 
     # ── attention per minute from MongoDB ─────────────────
     mongo_db = get_mongo_db()
+    
     pipeline = [
         {"$match": {"session_id": session_id}},
-        {
-            "$group": {
-                "_id": {
-                    "$subtract": [
-                        {"$toLong": "$ts"},
-                        {"$mod": [{"$toLong": "$ts"}, 60000]}
-                    ]
-                },
-                "avg_score": {"$avg": "$score"},
-                "count":     {"$sum": 1},
-            }
-        },
+        {"$group": {
+            "_id": {
+                "$subtract": [
+                    {"$toLong": "$ts"},
+                    {"$mod": [{"$toLong": "$ts"}, 60000]}
+                ]
+            },
+            "avg_score": {"$avg": "$score"}
+        }},
         {"$sort": {"_id": 1}},
-        {
-            "$project": {
-                "_id":       0,
-                "minute_ts": "$_id",
-                "avg_score": {"$round": ["$avg_score", 4]},
-                "count":     1,
-            }
-        },
+        {"$project": {
+            "_id": 0,
+            "minute_ts": "$_id",
+            "avg_score": {"$round": ["$avg_score", 4]}
+        }}
     ]
 
-    attention_timeline = await mongo_db["attention_logs"].aggregate(
-        pipeline
-    ).to_list(length=1000)
+    attention_timeline = await mongo_db["attention_logs"].aggregate(pipeline).to_list(length=1000)
 
     overall_avg = None
     if attention_timeline:
@@ -86,6 +115,7 @@ async def get_session_analytics(
             "present": present,
             "absent":  absent,
             "rate":    att_rate,
+            "summary": attendance_summary,
         },
         "attention": {
             "overall_avg": overall_avg,

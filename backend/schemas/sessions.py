@@ -15,6 +15,7 @@ class SessionStopResponse(BaseModel):
 class SessionListItem(BaseModel):
     session_id: int
     class_id: int
+    class_name: str
     started_at: datetime
     ended_at: Optional[datetime]
 

@@ -1,10 +1,19 @@
 import React from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useSession } from '../context/SessionContext';
+import { stopSession, stopCVPipeline } from '../api/client';
 
 const Layout = () => {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, token } = useAuth();
+  const { sessionId, setSessionId } = useSession();
   const location = useLocation();
+
+  const handleEnd = async () => {
+    await stopSession(sessionId, token);
+    await stopCVPipeline(sessionId, token);
+    setSessionId(null);
+  };
 
   const getPageTitle = (pathname) => {
     const path = pathname.split('/').filter(Boolean)[0] || 'home';
@@ -13,12 +22,7 @@ const Layout = () => {
 
   const getInitials = (name) => {
     if (!name) return '?';
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+    return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
   const navLinks = {

@@ -3,12 +3,13 @@ import { useAttentionSocket } from "../hooks/useAttentionSocket";
 import { AttentionGauge } from "../components/AttentionGauge";
 import { StudentCards } from "../components/StudentCards";
 import { useAuth } from "../hooks/useAuth";
+import { useSession } from "../context/SessionContext";
 import { apiFetch, startSession, stopSession, startCVPipeline, stopCVPipeline } from "../api/client";
 
 export default function Home() {
   const { currentUser, token } = useAuth();
+  const { sessionId, setSessionId } = useSession();
   const [now, setNow] = useState(new Date());
-  const [sessionId, setSessionId] = useState(null);
   const [classes, setClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState("");
   const scores = useAttentionSocket(sessionId);
@@ -58,7 +59,7 @@ export default function Home() {
                   </select>
                 )}
                 <button onClick={sessionId ? handleEnd : handleStart} className={`${sessionId ? "bg-red-500 hover:bg-red-600" : "bg-blue-600 hover:bg-blue-700"} text-white px-6 py-2 rounded-lg flex items-center gap-2 shadow-sm transition-all duration-200 font-medium`}>
-                    {sessionId ? "End Session" : "Start Session"}
+                    {sessionId ? "Stop Session" : "Start Session"}
                 </button>
             </div>
         )}

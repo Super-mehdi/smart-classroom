@@ -53,7 +53,24 @@ export function AuthProvider({ children }) {
   }
 }
 
-  function logout() {
+  async function logout() {
+    if (token) {
+        try {
+            // Find active sessions and stop them before logging out
+            const sessions = await fetch(`${API_URL}/api/sessions`, {
+                headers: { Authorization: `Bearer ${token}` }
+            }).then(r => r.json());
+            
+            for (const s of sessions) {
+                if (!s.ended_at) {
+                    await fetch(`${API_URL}/api/sessions/${s.session_id}/stop`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+                    await fetch(`${API_URL}/api/sessions/${s.session_id}/cv/stop`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+                }
+            }
+        } catch (e) {
+            console.error("Cleanup error on logout", e);
+        }
+    }
     setToken(null);
     setCurrentUser(null);
   }
