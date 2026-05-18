@@ -46,6 +46,7 @@ async def fetch_latest_attention(session_id: int) -> dict:
     db     = get_mongo_db()
     cutoff = datetime.utcnow() - timedelta(seconds=10)
 
+    # Aggregation to get latest stats
     pipeline = [
         {
             "$match": {
@@ -65,9 +66,18 @@ async def fetch_latest_attention(session_id: int) -> dict:
             }
         },
         {
+            "$lookup": {
+                "from": "face_embeddings",
+                "localField": "_id",
+                "foreignField": "student_id",
+                "as": "student_info"
+            }
+        },
+        {
             "$project": {
                 "_id":        0,
                 "student_id": "$_id",
+                "name": { "$arrayElemAt": ["$student_info.name", 0] },
                 "score":      1,
                 "yaw":        1,
                 "pitch":      1,
@@ -83,6 +93,12 @@ async def fetch_latest_attention(session_id: int) -> dict:
     for r in results:
         if isinstance(r.get("ts"), datetime):
             r["ts"] = r["ts"].isoformat()
+        
+        # Explicitly check for unenrolled/unknown faces
+        if not r.get("name") or r.get("student_id", "").startswith("FACE_"):
+            r["name"] = "Unknown"
+        else:
+            r["name"] = r["name"]
 
     scores    = [r["score"] for r in results]
     class_avg = round(sum(scores) / len(scores), 4) if scores else None
