@@ -1,0 +1,21 @@
+.attention-gauge-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.gauge-wrapper {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.gauge-progress {
+    transition: stroke-dashoffset 0.5s ease-out, stroke 0.3s;
+}
+.gauge-text {
+    position: absolute;
+    font-size: 24px;
+    font-weight: 700;
+}

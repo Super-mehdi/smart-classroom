@@ -26,6 +26,7 @@ import state
 ABSENCE_INTERVAL = int(os.getenv("CAPTURE_INTERVAL", 10))
 FRAME_W, FRAME_H = 640, 480
 HEADLESS         = os.getenv("HEADLESS", "false").lower() == "true"
+CAMERA_URL       = os.getenv("CAMERA_URL")
 
 # ── setup ─────────────────────────────────────────────
 print(f"Starting unified CV worker (Headless: {HEADLESS})")
@@ -72,17 +73,26 @@ def get_cached_student_id(
 
 
 def open_camera():
-    sources = [
-        ("http://10.72.125.24:4747/video", "DroidCam"),
+    sources = []
+    if CAMERA_URL:
+        sources.append((CAMERA_URL, f"CAMERA_URL ({CAMERA_URL})"))
+    
+    sources.extend([
         (0, "webcam index 0"),
         (2, "webcam index 2"),
-    ]
+    ])
+
     while True:
         for src, label in sources:
+            print(f"Attempting to open camera: {label}")
             cap = cv2.VideoCapture(src)
+            # Set a timeout for network streams if possible, though OpenCV doesn't have a direct one for all backends
             if cap.isOpened():
-                print(f"Camera opened: {label}")
-                return cap
+                # Test read
+                ret, _ = cap.read()
+                if ret:
+                    print(f"Camera opened and verified: {label}")
+                    return cap
             cap.release()
         print("No camera available. Retrying in 10s...")
         time.sleep(10)
@@ -98,7 +108,7 @@ print(f"Absence check every {ABSENCE_INTERVAL}s. Press Ctrl+C to stop.")
 
 try:
     while True:
-        sid = session_manager.session_id
+        sid = state.get_session_id()
         if sid is None:
             if cap is not None:
                 print("No active session. Closing camera.")
@@ -136,7 +146,6 @@ try:
                   f"Present: {[s['name'] for s in present]} | "
                   f"Absent:  {[s['name'] for s in absent]}")
 
-            state.set_session(sid)
             post_attendance(sid, present, absent)
             log_frame(sid, frame_id,
                       len(present), len(present) + len(absent))
@@ -215,8 +224,8 @@ try:
 
         if averages:
             print("Attention:")
-            for sid, avg in averages.items():
-                print(f"  {sid}: {avg:.4f}")
+            for sid_log, avg in averages.items():
+                print(f"  {sid_log}: {avg:.4f}")
             if class_avg:
                 print(f"  Class avg: {class_avg:.4f}\n")
 

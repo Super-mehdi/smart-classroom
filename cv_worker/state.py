@@ -17,6 +17,8 @@ ATTENTION_KEY = "smartclass:attention_data"
 
 def set_session(session_id: int):
     r.set(SESSION_KEY, session_id)
+    # Also clear any stale attention data when session changes
+    r.delete(ATTENTION_KEY)
 
 
 def clear_session():
@@ -26,7 +28,10 @@ def clear_session():
 
 def get_session_id():
     val = r.get(SESSION_KEY)
-    return int(val) if val else None
+    try:
+        return int(val) if val else None
+    except (ValueError, TypeError):
+        return None
 
 
 def is_active() -> bool:

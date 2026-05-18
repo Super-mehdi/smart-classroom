@@ -103,9 +103,12 @@ async def broadcaster():
         if not subscribers:
             continue
 
-        for session_id in list(subscribers.keys()):
+        active_sessions = list(subscribers.keys())
+        for session_id in active_sessions:
             try:
                 data = await fetch_latest_attention(session_id)
+                if data["students"]:
+                    print(f"Broadcasting updates for session {session_id} to {len(subscribers[session_id])} subscribers")
                 await broadcast(session_id, data)
             except Exception as e:
                 print(f"Broadcaster error for session {session_id}: {e}")
@@ -120,22 +123,16 @@ async def websocket_endpoint(websocket: WebSocket, session_id: int):
           f"({len(subscribers[session_id])} subscriber(s))")
 
     try:
+        # Keep the connection open until the client disconnects
         while True:
-            await asyncio.wait_for(
-                websocket.receive_text(),
-                timeout=30.0
-            )
-
-    except asyncio.TimeoutError:
-        # client stopped responding — try ping
-        try:
-            await websocket.send_json({"type": "ping"})
-        except Exception:
-            await remove_subscriber(session_id, websocket)
-            print(f"WebSocket timed out — session {session_id}")
+            # We don't need to wait for messages, but we need to keep the task alive
+            await websocket.receive_text()
 
     except WebSocketDisconnect:
         await remove_subscriber(session_id, websocket)
         remaining = len(subscribers.get(session_id, []))
         print(f"WebSocket disconnected — session {session_id} "
               f"({remaining} subscriber(s) remaining)")
+    except Exception as e:
+        print(f"WebSocket error — session {session_id}: {e}")
+        await remove_subscriber(session_id, websocket)

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { signup } from "../api/client";
 import { useAuth } from "../hooks/useAuth";
-import styles from "./Auth.module.css";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -22,14 +21,10 @@ export default function Auth() {
     try {
       if (isLogin) {
         const success = await login(email, password);
-        if (success) {
-          navigate("/");
-        } else {
-          setError("Invalid email or password");
-        }
+        if (success) navigate("/");
+        else setError("Invalid email or password");
       } else {
         await signup({ email, password, name, role });
-        // After signup, attempt to login or just switch to login mode
         setIsLogin(true);
         setError("Account created. Please sign in.");
       }
@@ -40,146 +35,64 @@ export default function Auth() {
     }
   };
 
-  const toggleMode = () => {
-    setIsLogin(!isLogin);
-    setError("");
-    setEmail("");
-    setPassword("");
-    setName("");
-    setRole("teacher");
-  };
-
   return (
-    <div className={styles.container}>
-      <div className={styles.leftColumn}>
-        <div className={styles.formWrapper}>
-          <div className={styles.logo}>SmartClass</div>
-          
-          <h1 className={styles.welcomeHeading}>
-            {isLogin ? "Welcome back" : "Create account"}
-          </h1>
-          <p className={styles.subtitle}>
-            {isLogin ? "Sign in to your account" : "Join SmartClass today"}
-          </p>
+    <div className="flex h-screen">
+      <div className="w-[45%] flex flex-col justify-center px-16 bg-white">
+        <div className="text-blue-600 font-bold text-2xl mb-2">SmartClass</div>
+        <p className="text-gray-400 text-sm mb-8">AI-powered engagement tracking</p>
+        
+        <h1 className="text-3xl font-light text-gray-900">{isLogin ? "Welcome back" : "Create account"}</h1>
+        <p className="text-gray-500 text-sm mt-2 mb-8">{isLogin ? "Sign in to your account" : "Join SmartClass today"}</p>
 
-          {error && <div className={styles.error}>{error}</div>}
+        {error && <div className="text-red-500 text-sm mb-4 bg-red-50 p-3 rounded">{error}</div>}
 
-          <form className={styles.form} onSubmit={handleSubmit}>
-            {!isLogin && (
-              <div className={styles.inputGroup}>
-                <input
-                  type="text"
-                  placeholder="Full Name"
-                  className={styles.input}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </div>
-            )}
-
-            <div className={styles.inputGroup}>
-              <input
-                type="email"
-                placeholder="Email"
-                className={styles.input}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+        <form className="space-y-6" onSubmit={handleSubmit}>
+          {!isLogin && (
+            <div>
+              <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Full Name</label>
+              <input type="text" className="w-full border-b-2 border-gray-200 focus:border-blue-500 outline-none py-2 text-gray-800 transition-colors bg-transparent" value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
-
-            <div className={styles.inputGroup}>
-              <input
-                type="password"
-                placeholder="Password"
-                className={styles.input}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-
-            {!isLogin && (
-              <div className={styles.inputGroup}>
-                <select
-                  className={styles.roleSelect}
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                >
-                  <option value="teacher">Teacher</option>
-                  <option value="superuser">Superuser</option>
-                </select>
-              </div>
-            )}
-
-            <button type="submit" className={styles.submitButton} disabled={loading}>
-              {loading ? "Please wait..." : (isLogin ? "Sign In" : "Sign Up")}
-            </button>
-          </form>
-
-          <div className={styles.toggleWrapper}>
-            {isLogin ? "Don't have an account?" : "Already have an account?"}
-            <button type="button" className={styles.toggleLink} onClick={toggleMode}>
-              {isLogin ? "Sign up" : "Sign in"}
-            </button>
+          )}
+          <div>
+            <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Email</label>
+            <input type="email" className="w-full border-b-2 border-gray-200 focus:border-blue-500 outline-none py-2 text-gray-800 transition-colors bg-transparent" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
-        </div>
+          <div>
+            <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Password</label>
+            <input type="password" className="w-full border-b-2 border-gray-200 focus:border-blue-500 outline-none py-2 text-gray-800 transition-colors bg-transparent" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          </div>
+          {!isLogin && (
+             <div>
+               <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Role</label>
+               <select className="w-full border-b-2 border-gray-200 focus:border-blue-500 outline-none py-2 text-gray-800 transition-colors bg-transparent" value={role} onChange={(e) => setRole(e.target.value)}>
+                 <option value="teacher">Teacher</option>
+                 <option value="superuser">Superuser</option>
+               </select>
+             </div>
+          )}
+          <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors" disabled={loading}>
+            {loading ? "Please wait..." : (isLogin ? "Sign In" : "Sign Up")}
+          </button>
+        </form>
+
+        <p className="mt-8 text-sm text-gray-600">
+          {isLogin ? "Don't have an account?" : "Already have an account?"}
+          <button className="text-blue-600 hover:underline ml-2" onClick={() => setIsLogin(!isLogin)}>{isLogin ? "Sign up" : "Sign in"}</button>
+        </p>
       </div>
 
-      <div className={styles.rightColumn}>
-        <svg
-          className={styles.illustration}
-          viewBox="0 0 500 400"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          {/* Background / Floor */}
-          <rect x="50" y="300" width="400" height="2" fill="#dadce0" />
-          
-          {/* Teacher */}
-          <rect x="80" y="180" width="40" height="80" rx="4" fill="#1a73e8" />
-          <circle cx="100" y="160" r="15" fill="#1a73e8" />
-          
-          {/* Desk for Teacher */}
-          <rect x="70" y="260" width="60" height="40" rx="2" fill="#4285f4" />
-          
-          {/* Students */}
-          <g transform="translate(200, 220)">
-            <rect x="0" y="30" width="30" height="50" rx="4" fill="#34a853" opacity="0.8" />
-            <circle cx="15" cy="15" r="12" fill="#34a853" opacity="0.8" />
-            <rect x="-5" y="80" width="40" height="10" rx="2" fill="#dadce0" />
-          </g>
-          <g transform="translate(260, 220)">
-            <rect x="0" y="30" width="30" height="50" rx="4" fill="#fbbc04" opacity="0.8" />
-            <circle cx="15" cy="15" r="12" fill="#fbbc04" opacity="0.8" />
-            <rect x="-5" y="80" width="40" height="10" rx="2" fill="#dadce0" />
-          </g>
-          <g transform="translate(320, 220)">
-            <rect x="0" y="30" width="30" height="50" rx="4" fill="#4285f4" opacity="0.8" />
-            <circle cx="15" cy="15" r="12" fill="#4285f4" opacity="0.8" />
-            <rect x="-5" y="80" width="40" height="10" rx="2" fill="#dadce0" />
-          </g>
-          <g transform="translate(380, 220)">
-            <rect x="0" y="30" width="30" height="50" rx="4" fill="#34a853" opacity="0.8" />
-            <circle cx="15" cy="15" r="12" fill="#34a853" opacity="0.8" />
-            <rect x="-5" y="80" width="40" height="10" rx="2" fill="#dadce0" />
-          </g>
-
-          {/* AI Camera */}
-          <rect x="230" y="40" width="40" height="25" rx="5" fill="#5f6368" />
-          <circle cx="250" cy="52.5" r="8" fill="#202124" />
-          <circle cx="265" cy="48" r="3" fill="#d93025" />
-          
-          {/* Scanning lines/cone */}
-          <path
-            d="M250 65L150 300M250 65L350 300"
-            stroke="#1a73e8"
-            strokeWidth="1"
-            strokeDasharray="4 4"
-            opacity="0.3"
-          />
+      <div className="w-[55%] bg-gradient-to-br from-blue-600 to-blue-800 flex flex-col items-center justify-center text-white p-16">
+        <svg viewBox="0 0 500 400" className="w-full max-w-sm" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Simple abstract classroom */}
+            <rect x="50" y="300" width="400" height="2" fill="white" fillOpacity="0.3" />
+            <rect x="80" y="180" width="40" height="80" rx="4" fill="white" />
+            <circle cx="100" cy="160" r="15" fill="white" />
+            <rect x="200" y="250" width="30" height="50" rx="4" fill="white" fillOpacity="0.4" />
+            <rect x="260" y="250" width="30" height="50" rx="4" fill="white" fillOpacity="0.4" />
+            <rect x="230" y="40" width="40" height="25" rx="5" fill="white" />
         </svg>
+        <h2 className="text-3xl font-light mt-8">Smart Monitoring</h2>
+        <p className="text-blue-200 text-sm mt-2">AI-powered classroom engagement tracking</p>
       </div>
     </div>
   );

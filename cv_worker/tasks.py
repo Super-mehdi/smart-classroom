@@ -46,12 +46,12 @@ def post_attention_batch():
 @celery_app.task(name="tasks.start_cv_pipeline")
 def start_cv_pipeline():
     """Starts the CV pipeline (main.py) as a subprocess."""
+    logger.info("Received start_cv_pipeline task")
     if os.path.exists(PID_FILE):
-        # Check if process is actually running
         try:
             with open(PID_FILE, "r") as f:
                 pid = int(f.read().strip())
-            os.kill(pid, 0) # Signals 0 does nothing but checks if PID exists
+            os.kill(pid, 0)
             logger.info(f"Pipeline already running with PID: {pid}")
             return
         except (ProcessLookupError, ValueError, OSError):
@@ -59,25 +59,32 @@ def start_cv_pipeline():
             os.remove(PID_FILE)
 
     try:
-        # Run main.py from the cv_worker directory
         worker_dir = os.path.dirname(__file__)
-        # Ensure we use the same python interpreter
-        process = subprocess.Popen(
-            [sys.executable, "-u", "main.py"],
-            cwd=worker_dir,
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-            text=True,
-            env=os.environ.copy()
-        )
-        pid = process.pid
-        logger.info(f"Started CV pipeline with PID: {pid}")
+        log_path = os.path.join(worker_dir, "pipeline.log")
+        logger.info(f"Starting pipeline, logging to {log_path}")
 
-        with open(PID_FILE, "w") as f:
-            f.write(str(pid))
+        with open(log_path, "a") as log_file:
+            process = subprocess.Popen(
+                [sys.executable, "-u", "main.py"],
+                cwd=worker_dir,
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                text=True,
+                env=os.environ.copy(),
+                start_new_session=True
+            )
+            pid = process.pid
+            logger.info(f"Successfully started CV pipeline with PID: {pid}")
+
+            with open(PID_FILE, "w") as f:
+                f.write(str(pid))
 
     except Exception as e:
         logger.error(f"Failed to start CV pipeline: {e}")
+        raise e
+
+        raise e
+
 
 
 @celery_app.task(name="tasks.stop_cv_pipeline")

@@ -98,12 +98,18 @@ def start_cv(
         raise HTTPException(status_code=403, detail="Not your session")
 
     try:
+        # Set session state in Redis so the CV worker process can see it immediately
+        import redis
+        import os
+        r = redis.Redis.from_url(os.environ["CELERY_BROKER"], decode_responses=True)
+        r.set("smartclass:session_id", session_id)
+        r.delete("smartclass:attention_data")
+
         logger.info(f"Sending start_cv_pipeline task for session {session_id} to queue cv_worker")
         celery_app.send_task("tasks.start_cv_pipeline", queue="cv_worker")
     except Exception as e:
-        logger.error(f"Failed to send start_cv_pipeline task: {e}")
-        # Return success anyway to avoid blocking frontend, but log the error
-        return {"status": "cv_start_queued_with_error", "error": str(e)}
+        logger.error(f"Failed to start CV for session {session_id}: {e}")
+        return {"status": "cv_start_failed", "error": str(e)}
     return {"status": "cv_started"}
 
 @router.post("/{session_id}/cv/stop")
@@ -122,10 +128,16 @@ def stop_cv(
         raise HTTPException(status_code=403, detail="Not your session")
 
     try:
+        # Clear session state in Redis
+        import redis
+        import os
+        r = redis.Redis.from_url(os.environ["CELERY_BROKER"], decode_responses=True)
+        r.delete("smartclass:session_id")
+        r.delete("smartclass:attention_data")
+
         logger.info(f"Sending stop_cv_pipeline task for session {session_id} to queue cv_worker")
         celery_app.send_task("tasks.stop_cv_pipeline", queue="cv_worker")
     except Exception as e:
-        logger.error(f"Failed to send stop_cv_pipeline task: {e}")
-        # Return success anyway to avoid blocking frontend
-        return {"status": "cv_stop_queued_with_error", "error": str(e)}
+        logger.error(f"Failed to stop CV for session {session_id}: {e}")
+        return {"status": "cv_stop_failed", "error": str(e)}
     return {"status": "cv_stopped"}

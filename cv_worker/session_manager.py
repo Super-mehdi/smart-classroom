@@ -20,6 +20,10 @@ WORKER_PASSWORD = os.getenv("WORKER_PASSWORD", "")
 
 def login():
     url = f"{BACKEND_URL}/api/auth/login"
+    if not WORKER_EMAIL or not WORKER_PASSWORD:
+        logger.error("WORKER_EMAIL or WORKER_PASSWORD not set in environment.")
+        return None
+    
     payload = {
         "email": WORKER_EMAIL,
         "password": WORKER_PASSWORD
@@ -34,8 +38,11 @@ def login():
             logger.info("Login successful, token obtained.")
             return token
         else:
-            logger.error("Login response missing access_token.")
+            logger.error(f"Login response missing access_token. Response: {data}")
             return None
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"Login HTTP error: {e.response.status_code} - {e.response.text}")
+        return None
     except Exception as e:
         logger.error(f"Login failed: {e}")
         return None
@@ -55,9 +62,16 @@ def get_active_session(token):
         
         if active_sessions:
             # Return the id of the first session where ended_at is null
-            # Usually there should be only one active session per teacher
             session_id = active_sessions[0].get("session_id")
+            logger.info(f"Found active session: {session_id}")
             return session_id
+        
+        logger.info("No active sessions found.")
+        return None
+    except requests.exceptions.HTTPError as e:
+        logger.error(f"Failed to fetch sessions (HTTP {e.response.status_code}): {e.response.text}")
+        if e.response.status_code == 401:
+            return "EXPIRED"
         return None
     except Exception as e:
         logger.error(f"Failed to fetch active session: {e}")
@@ -76,16 +90,17 @@ class SessionManager:
                 token = login()
             
             if token:
-                new_session_id = get_active_session(token)
+                res = get_active_session(token)
+                if res == "EXPIRED":
+                    token = None
+                    continue
+                
+                new_session_id = res
                 if new_session_id != self.session_id:
                     logger.info(f"Session ID changed: {self.session_id} -> {new_session_id}")
                     self.session_id = new_session_id
-                
-                # If token expired (401), we might want to reset it, 
-                # but get_active_session currently catches and logs errors.
-                # For simplicity, we keep the token until login is needed again.
             else:
-                logger.warning("No token available, retrying login in next cycle.")
+                logger.warning("No token available, retrying login in 30s.")
 
             # Wait for 30 seconds or until stopped
             self._stop_event.wait(30)

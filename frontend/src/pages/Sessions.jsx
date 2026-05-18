@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import styles from "./Sessions.module.css";
 
 const DUMMY_SESSIONS = [
   { id: 1, date: "May 17, 2024", className: "Math 101", duration: "45 min", avgAttention: "82%", attendance: "95%" },
@@ -8,11 +7,6 @@ const DUMMY_SESSIONS = [
   { id: 4, date: "May 12, 2024", className: "Computer Science", duration: "90 min", avgAttention: "92%", attendance: "92%" },
   { id: 5, date: "May 10, 2024", className: "Physics 202", duration: "60 min", avgAttention: "70%", attendance: "85%" },
 ];
-
-const DUMMY_CHART_DATA = Array.from({ length: 61 }, (_, i) => ({
-  minute: i,
-  score: 0.5 + Math.random() * 0.4,
-}));
 
 const DUMMY_STUDENTS = [
   { id: 1, name: "Alice Johnson", status: "Present", score: 0.92 },
@@ -25,77 +19,48 @@ const DUMMY_STUDENTS = [
 export default function Sessions() {
   const [selectedSession, setSelectedSession] = useState(null);
 
-  const handleViewDetails = (session) => {
-    setSelectedSession(session);
-  };
-
-  const handleBackToList = () => {
-    setSelectedSession(null);
-  };
-
   if (selectedSession) {
     return (
-      <div className={styles.container}>
-        <div className={styles.header}>
-          <button className={styles.backBtn} onClick={handleBackToList}>
-            <span className="material-icons">arrow_back</span>
-          </button>
-          <div className={styles.sessionInfo}>
-            <h2>{selectedSession.className}</h2>
-            <p>{selectedSession.date} • {selectedSession.duration}</p>
+      <div className="p-6">
+        <button className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 font-medium" onClick={() => setSelectedSession(null)}>
+          <span className="material-icons">arrow_back</span> Back to Sessions
+        </button>
+        <div className="flex items-end gap-6 mb-8">
+            <h2 className="text-3xl font-light text-gray-900">{selectedSession.className}</h2>
+            <p className="text-gray-500 pb-1">{selectedSession.date} • {selectedSession.duration}</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-6">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Attention Score</h3>
+            {/* SVG Chart placeholder */}
+            <div className="h-40 bg-gray-50 rounded-lg flex items-center justify-center text-gray-400">Time-series data...</div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 flex flex-col items-center justify-center">
+            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Attendance</h3>
+            <div className="text-4xl font-light text-blue-600">{selectedSession.attendance}</div>
           </div>
         </div>
 
-        <div className={styles.summaryGrid}>
-          <div className={`${styles.card} ${styles.chartCard}`}>
-            <h3>Attention Score over Time</h3>
-            <div className={styles.lineChart}>
-              <svg viewBox="0 0 600 200" preserveAspectRatio="none" style={{ width: '100%', height: '100%' }}>
-                {/* Grid lines */}
-                {[0, 50, 100, 150].map(y => (
-                  <line key={y} x1="0" y1={y} x2="600" y2={y} className={styles.chartGrid} />
-                ))}
-                {/* Data line */}
-                <polyline
-                  points={DUMMY_CHART_DATA.map(d => `${d.minute * 10},${200 - (d.score * 200)}`).join(' ')}
-                  className={styles.chartLine}
-                />
-                {/* Labels */}
-                <text x="0" y="195" className={styles.chartAxis}>0 min</text>
-                <text x="560" y="195" className={styles.chartAxis}>60 min</text>
-              </svg>
-            </div>
-          </div>
-
-          <div className={`${styles.card} ${styles.attendanceCard}`}>
-            <h3>Attendance Summary</h3>
-            <div className={styles.bigPercentage}>{selectedSession.attendance}</div>
-            <div className={styles.attendanceCounts}>
-              <span>4 Present</span> • <span>1 Absent</span>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.card}>
-          <h3>Student List</h3>
-          <table className={styles.table}>
-            <thead>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 mt-6">
+          <table className="w-full text-left">
+            <thead className="bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wide">
               <tr>
-                <th>Name</th>
-                <th>Status</th>
-                <th>Attention Score</th>
+                <th className="px-6 py-4">Name</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">Attention Score</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-100">
               {DUMMY_STUDENTS.map(student => (
-                <tr key={student.id}>
-                  <td>{student.name}</td>
-                  <td>
-                    <span className={`${styles.badge} ${student.status === 'Present' ? styles.present : styles.absent}`}>
+                <tr key={student.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 font-medium text-gray-800">{student.name}</td>
+                  <td className="px-6 py-4">
+                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${student.status === 'Present' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                       {student.status}
                     </span>
                   </td>
-                  <td>{student.score > 0 ? (student.score * 100).toFixed(0) + '%' : '-'}</td>
+                  <td className="px-6 py-4">{student.score > 0 ? (student.score * 100).toFixed(0) + '%' : '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -106,30 +71,30 @@ export default function Sessions() {
   }
 
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>Sessions</h1>
-      <div className={styles.card}>
-        <table className={styles.table}>
-          <thead>
+    <div className="p-6">
+      <h1 className="text-2xl font-normal text-gray-800 mb-6">Sessions</h1>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <table className="w-full text-left">
+          <thead className="bg-gray-50 text-xs font-medium text-gray-500 uppercase tracking-wide">
             <tr>
-              <th>Date</th>
-              <th>Class</th>
-              <th>Duration</th>
-              <th>Avg Attention</th>
-              <th>Attendance Rate</th>
-              <th>Actions</th>
+              <th className="px-6 py-4">Date</th>
+              <th className="px-6 py-4">Class</th>
+              <th className="px-6 py-4">Duration</th>
+              <th className="px-6 py-4">Avg Attention</th>
+              <th className="px-6 py-4">Attendance Rate</th>
+              <th className="px-6 py-4">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-100">
             {DUMMY_SESSIONS.map((session) => (
-              <tr key={session.id}>
-                <td>{session.date}</td>
-                <td>{session.className}</td>
-                <td>{session.duration}</td>
-                <td>{session.avgAttention}</td>
-                <td>{session.attendance}</td>
-                <td>
-                  <button className={styles.viewBtn} onClick={() => handleViewDetails(session)}>
+              <tr key={session.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4">{session.date}</td>
+                <td className="px-6 py-4 font-medium text-gray-800">{session.className}</td>
+                <td className="px-6 py-4">{session.duration}</td>
+                <td className="px-6 py-4">{session.avgAttention}</td>
+                <td className="px-6 py-4">{session.attendance}</td>
+                <td className="px-6 py-4">
+                  <button className="text-blue-600 hover:text-blue-800 text-sm font-medium" onClick={() => setSelectedSession(session)}>
                     View
                   </button>
                 </td>
