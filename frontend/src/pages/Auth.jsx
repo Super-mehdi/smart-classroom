@@ -6,11 +6,8 @@ import { useAuth } from "../hooks/useAuth";
 export default function Auth() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [role, setRole] = useState("teacher");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -19,15 +16,9 @@ export default function Auth() {
     setError("");
     setLoading(true);
     try {
-      if (isLogin) {
         const success = await login(email, password);
         if (success) navigate("/");
         else setError("Invalid email or password");
-      } else {
-        await signup({ email, password, name, role });
-        setIsLogin(true);
-        setError("Account created. Please sign in.");
-      }
     } catch (err) {
       setError(err.message || "An error occurred");
     } finally {
@@ -41,18 +32,12 @@ export default function Auth() {
         <div className="text-blue-600 font-bold text-2xl mb-2">SmartClass</div>
         <p className="text-gray-400 text-sm mb-8">AI-powered engagement tracking</p>
         
-        <h1 className="text-3xl font-light text-gray-900">{isLogin ? "Welcome back" : "Create account"}</h1>
-        <p className="text-gray-500 text-sm mt-2 mb-8">{isLogin ? "Sign in to your account" : "Join SmartClass today"}</p>
+        <h1 className="text-3xl font-light text-gray-900">Welcome back</h1>
+        <p className="text-gray-500 text-sm mt-2 mb-8">Sign in to your account</p>
 
         {error && <div className="text-red-500 text-sm mb-4 bg-red-50 p-3 rounded">{error}</div>}
 
         <form className="space-y-6" onSubmit={handleSubmit}>
-          {!isLogin && (
-            <div>
-              <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Full Name</label>
-              <input type="text" className="w-full border-b-2 border-gray-200 focus:border-blue-500 outline-none py-2 text-gray-800 transition-colors bg-transparent" value={name} onChange={(e) => setName(e.target.value)} required />
-            </div>
-          )}
           <div>
             <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Email</label>
             <input type="email" className="w-full border-b-2 border-gray-200 focus:border-blue-500 outline-none py-2 text-gray-800 transition-colors bg-transparent" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -61,24 +46,10 @@ export default function Auth() {
             <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Password</label>
             <input type="password" className="w-full border-b-2 border-gray-200 focus:border-blue-500 outline-none py-2 text-gray-800 transition-colors bg-transparent" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
-          {!isLogin && (
-             <div>
-               <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Role</label>
-               <select className="w-full border-b-2 border-gray-200 focus:border-blue-500 outline-none py-2 text-gray-800 transition-colors bg-transparent" value={role} onChange={(e) => setRole(e.target.value)}>
-                 <option value="teacher">Teacher</option>
-                 <option value="superuser">Superuser</option>
-               </select>
-             </div>
-          )}
           <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-medium transition-colors" disabled={loading}>
-            {loading ? "Please wait..." : (isLogin ? "Sign In" : "Sign Up")}
+            {loading ? "Please wait..." : "Sign In"}
           </button>
         </form>
-
-        <p className="mt-8 text-sm text-gray-600">
-          {isLogin ? "Don't have an account?" : "Already have an account?"}
-          <button className="text-blue-600 hover:underline ml-2" onClick={() => setIsLogin(!isLogin)}>{isLogin ? "Sign up" : "Sign in"}</button>
-        </p>
       </div>
 
       <div className="w-[55%] bg-gradient-to-br from-blue-600 to-blue-800 flex flex-col items-center justify-center text-white p-16">
