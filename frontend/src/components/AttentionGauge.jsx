@@ -12,7 +12,8 @@ export function AttentionGauge({ scores }) {
         return "#ea4335";
     };
 
-    const circumference = 251;
+    const radius = 60;
+    const circumference = 2 * Math.PI * radius;
     const offset = circumference * (1 - averageScore);
 
     if (!scores || scores.length === 0) return null;
@@ -21,9 +22,9 @@ export function AttentionGauge({ scores }) {
         <div className="flex flex-col items-center justify-center">
             <div className="relative w-40 h-40 flex items-center justify-center">
                 <svg width="160" height="160" viewBox="0 0 160 160">
-                    <circle cx="80" cy="80" r="60" fill="none" stroke="#f1f3f4" strokeWidth="12" />
+                    <circle cx="80" cy="80" r={radius} fill="none" stroke="#f1f3f4" strokeWidth="12" />
                     <circle
-                        cx="80" cy="80" r="60"
+                        cx="80" cy="80" r={radius}
                         fill="none"
                         stroke={getColor(averageScore)}
                         strokeWidth="12"
