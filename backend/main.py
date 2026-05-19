@@ -16,6 +16,7 @@ from routers.analytics import router as analytics_router
 from routers.sessions import router as sessions_router
 from routers.classes import router as classes_router
 from routers.students import router as students_router
+from routers.users import router as users_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -58,6 +59,7 @@ app.include_router(analytics_router, prefix="/api")
 app.include_router(classes_router, prefix="/api")
 app.include_router(sessions_router, prefix="/api")
 app.include_router(students_router, prefix="/api")
+app.include_router(users_router, prefix="/api")
 
 @app.get("/api/health/")
 async def health():

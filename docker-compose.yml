@@ -180,8 +180,8 @@ services:
     command: ["celery", "-A", "celery_app", "worker", "--loglevel=info"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    devices:
-      - /dev/video0:/dev/video0
+    # devices:
+    #   - /dev/video0:/dev/video0
     volumes:
       - media_uploads:/app/media
       - deepface_models:/root/.deepface/weights

@@ -29,6 +29,9 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     full_name = Column(String, nullable=False)
     role = Column(Enum(UserRole), nullable=False, default=UserRole.teacher)
+    department = Column(String, nullable=True)
+    office_number = Column(String, nullable=True)
+    is_online = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # one teacher → many classes
