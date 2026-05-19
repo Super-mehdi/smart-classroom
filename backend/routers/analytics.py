@@ -10,6 +10,10 @@ from models import (
     Session as ClassSession, Class, User, UserRole
 )
 from core.dependencies import get_current_user
+import io
+import csv
+from fastapi.responses import StreamingResponse
+
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -333,3 +337,103 @@ async def get_overview_analytics(
         "generated_at": datetime.utcnow().isoformat(),
         "classes":      result_classes,
     }
+
+@router.get("/classes/{class_id}/export")
+async def export_class_analytics(
+    class_id: int,
+    format: str = "csv",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    cls = db.query(Class).filter(Class.id == class_id).first()
+    if not cls:
+        raise HTTPException(status_code=404, detail="Class not found")
+
+    if (current_user.role != UserRole.superuser and
+            cls.teacher_id != current_user.id):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    mongo_db = get_mongo_db()
+
+    # get all sessions for this class
+    sessions = db.query(ClassSession).filter(
+        ClassSession.class_id == class_id
+    ).order_by(ClassSession.started_at.desc()).limit(30).all()
+
+    session_ids = [s.id for s in sessions]
+    session_map = {s.id: s for s in sessions}
+
+    # attendance per session from PostgreSQL
+    attendance_map = {}
+    for sid in session_ids:
+        records = db.query(AttendanceRecord).filter(
+            AttendanceRecord.session_id == sid
+        ).all()
+        total   = len(records)
+        present = sum(1 for r in records if r.status == AttendanceStatus.present)
+        attendance_map[sid] = {
+            "total":   total,
+            "present": present,
+            "absent":  total - present,
+            "rate":    round(present / total, 4) if total > 0 else None,
+        }
+
+    # avg attention per session from MongoDB
+    pipeline = [
+        {"$match": {"session_id": {"$in": session_ids}}},
+        {
+            "$group": {
+                "_id":       "$session_id",
+                "avg_score": {"$avg": "$score"},
+                "min_score": {"$min": "$score"},
+                "max_score": {"$max": "$score"},
+            }
+        },
+    ]
+    attn_results = await mongo_db["attention_logs"].aggregate(
+        pipeline
+    ).to_list(length=100)
+    attention_map = {
+        r["_id"]: {
+            "avg": round(r["avg_score"], 4),
+            "min": round(r["min_score"], 4),
+            "max": round(r["max_score"], 4),
+        }
+        for r in attn_results
+    }
+
+    # merge into rows
+    rows = []
+    for sid in session_ids:
+        s    = session_map[sid]
+        att  = attendance_map.get(sid, {})
+        attn = attention_map.get(sid, {})
+        rows.append({
+            "session_id":        sid,
+            "started_at":        s.started_at.isoformat() if s.started_at else "",
+            "ended_at":          s.ended_at.isoformat() if s.ended_at else "",
+            "total_students":    att.get("total", 0),
+            "present":           att.get("present", 0),
+            "absent":            att.get("absent", 0),
+            "attendance_rate":   att.get("rate", ""),
+            "avg_attention":     attn.get("avg", ""),
+            "min_attention":     attn.get("min", ""),
+            "max_attention":     attn.get("max", ""),
+        })
+
+    # generate CSV
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=rows[0].keys() if rows else [])
+    writer.writeheader()
+    writer.writerows(rows)
+    output.seek(0)
+
+    filename = f"class_{class_id}_analytics.csv"
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}"
+        },
+    )
