@@ -4,7 +4,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from jose import jwt, JWTError
 from db.session import get_db
-from models import User
+from models import User, UserRole
 from core.security import SECRET_KEY, ALGORITHM
 
 bearer_scheme = HTTPBearer()
@@ -37,7 +37,7 @@ def get_current_user(
     return user
 
 def require_teacher(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role not in ("teacher", "superuser"):
+    if current_user.role not in (UserRole.teacher, UserRole.superuser):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Teachers only",
@@ -45,7 +45,7 @@ def require_teacher(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 def require_superuser(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role != "superuser":
+    if current_user.role != UserRole.superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Superusers only",

@@ -28,6 +28,7 @@ def enroll_all():
 
     col = get_collection()
     enrolled, skipped, failed = 0, 0, 0
+    current_ids = []
 
     for photo in photos:
         stem  = photo.stem
@@ -38,6 +39,7 @@ def enroll_all():
             continue
 
         student_id, name = parts[0], parts[1]
+        current_ids.append(student_id)
 
         try:
             result    = DeepFace.represent(
@@ -63,6 +65,11 @@ def enroll_all():
         except Exception as e:
             print(f"FAIL: {photo.name} — {e}")
             failed += 1
+
+    # Sync deletions: remove IDs that are in Mongo but NOT in the faces folder
+    delete_result = col.delete_many({"student_id": {"$nin": current_ids}})
+    if delete_result.deleted_count > 0:
+        print(f"DELETED: {delete_result.deleted_count} stale students from database")
 
     print(f"\nDone. {enrolled} enrolled, {skipped} skipped, {failed} failed.")
 

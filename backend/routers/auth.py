@@ -1,6 +1,7 @@
 # backend/routers/auth.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime
 from core.dependencies import get_current_user
 from db.session import get_db
 from models import User
@@ -24,7 +25,20 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
     # 3. Issue token — use email as the subject (or user.id if you prefer)
     token = create_access_token(subject=user.email)
+    
+    # 4. Mark as online and update last_seen
+    user.is_online = True
+    user.last_seen = datetime.utcnow()
+    db.commit()
+    
     return TokenResponse(access_token=token)
+
+@router.post("/heartbeat")
+def heartbeat(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    current_user.last_seen = datetime.utcnow()
+    current_user.is_online = True
+    db.commit()
+    return {"status": "ok"}
 
 @router.get("/me")
 def get_me(current_user: User = Depends(get_current_user)):
@@ -34,3 +48,9 @@ def get_me(current_user: User = Depends(get_current_user)):
         "full_name": current_user.full_name,
         "role": current_user.role,
     }
+
+@router.post("/logout")
+def logout(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    current_user.is_online = False
+    db.commit()
+    return {"status": "ok"}

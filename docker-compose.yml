@@ -115,6 +115,7 @@ services:
     volumes:
       - media_uploads:/app/media
       - backend_static:/app/static
+      - ./cv_worker:/cv_worker
     networks:
       - smartclass_net
     depends_on:
@@ -183,6 +184,7 @@ services:
     # devices:
     #   - /dev/video0:/dev/video0
     volumes:
+      - ./cv_worker:/app
       - media_uploads:/app/media
       - deepface_models:/root/.deepface/weights
     networks:
@@ -194,6 +196,29 @@ services:
         condition: service_healthy
       backend:
         condition: service_started
+    logging: *default-logging
+
+  cv_server:
+    build:
+      context: ./cv_worker
+      dockerfile: Dockerfile
+    <<: *default-restart
+    container_name: smartclass_cv_server
+    env_file: .env
+    environment:
+      MONGO_URI:    mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017/${MONGO_DB:-smartclass}?authSource=admin
+      REDIS_URL:    redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_BROKER: redis://:${REDIS_PASSWORD}@redis:6379/1
+    command: ["python", "server.py"]
+    volumes:
+      - ./cv_worker:/app
+    ports:
+      - "5001:5001"
+    networks:
+      - smartclass_net
+    depends_on:
+      redis:
+        condition: service_healthy
     logging: *default-logging
 
   cv_beat:
@@ -212,6 +237,8 @@ services:
       WORKER_EMAIL: ${WORKER_EMAIL}
       WORKER_PASSWORD: ${WORKER_PASSWORD}
     command: ["celery", "-A", "celery_app", "beat", "--loglevel=info"]
+    volumes:
+      - ./cv_worker:/app
     networks:
       - smartclass_net
     depends_on:

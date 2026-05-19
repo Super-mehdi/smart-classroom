@@ -20,7 +20,8 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (currentUser?.role === "teacher" && token) {
+    const isAuthorized = currentUser?.role === "teacher" || currentUser?.role === "superuser";
+    if (isAuthorized && token) {
       apiFetch("/api/classes", {}, token).then((data) => {
         setClasses(data);
         if (data.length > 0) setSelectedClassId(data[0].id);
@@ -51,7 +52,7 @@ export default function Home() {
           <div className="text-5xl font-thin text-gray-900 mt-1">{now.toLocaleTimeString("en-US", { hour12: false })}</div>
         </div>
 
-        {currentUser?.role === "teacher" && (
+        {(currentUser?.role === "teacher" || currentUser?.role === "superuser") && (
             <div className="flex items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                 {!sessionId && (
                   <select className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" onChange={(e) => setSelectedClassId(e.target.value)}>

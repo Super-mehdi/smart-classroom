@@ -1,4 +1,4 @@
-export const API_URL = "http://localhost:8000";
+export const API_URL = `http://${window.location.hostname}:8000`;
 
 export async function apiFetch(path, options = {}, token = null) {
   const headers = {
@@ -59,7 +59,7 @@ export async function startCVPipeline(sessionId, token) {
     return await apiFetch(`/api/sessions/${sessionId}/cv/start`, { method: "POST" }, token);
   } catch (error) {
     console.warn("Backend CV start failed, trying local server:", error);
-    return fetch("http://localhost:5001/start", { method: "POST" });
+    return fetch(`http://${window.location.hostname}:5001/start`, { method: "POST" });
   }
 }
 
@@ -68,7 +68,7 @@ export async function stopCVPipeline(sessionId, token) {
     return await apiFetch(`/api/sessions/${sessionId}/cv/stop`, { method: "POST" }, token);
   } catch (error) {
     console.warn("Backend CV stop failed, trying local server:", error);
-    return fetch("http://localhost:5001/stop", { method: "POST" });
+    return fetch(`http://${window.location.hostname}:5001/stop`, { method: "POST" });
   }
 }
 

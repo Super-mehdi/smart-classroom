@@ -3,14 +3,15 @@ import logging
 from flask import Flask, jsonify
 from flask_cors import CORS
 from celery_app import celery_app
+from cv_absence.enroll import enroll_all
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-# Allow requests from http://localhost:3000 (standard React dev port)
-CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
+# Allow requests from any origin for cross-device access
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 @app.route("/start", methods=["POST"])
 def start_pipeline():
@@ -32,6 +33,16 @@ def stop_pipeline():
 
     except Exception as e:
         logger.error(f"Failed to send stop task: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route("/enroll", methods=["POST"])
+def trigger_enroll():
+    try:
+        logger.info("Triggering enrollment manually")
+        enroll_all()
+        return jsonify({"status": "enrolled"}), 200
+    except Exception as e:
+        logger.error(f"Enrollment failed: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":

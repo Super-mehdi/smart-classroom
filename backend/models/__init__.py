@@ -32,6 +32,7 @@ class User(Base):
     department = Column(String, nullable=True)
     office_number = Column(String, nullable=True)
     is_online = Column(Boolean, default=False)
+    last_seen = Column(DateTime, default=datetime.utcnow)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # one teacher → many classes
@@ -93,3 +94,14 @@ class AlertConfig(Base):
     recipient_emails = Column(ARRAY(String), default=[])
 
     class_ = relationship("Class", back_populates="alert_config")
+
+
+# ── Student ───────────────────────────────────────────
+
+class Student(Base):
+    __tablename__ = "students"
+
+    id = Column(String, primary_key=True, index=True) # S001, S002, etc.
+    name = Column(String, nullable=False)
+    photo_path = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

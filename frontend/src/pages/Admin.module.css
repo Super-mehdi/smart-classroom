@@ -6,6 +6,51 @@
   padding: 0;
 }
 
+/* ── Tab Selector ──────────────────────────────── */
+
+.tabContainer {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #dadce0;
+  padding-bottom: 0;
+}
+
+.tabLink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: #5f6368;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 8px 8px 0 0;
+}
+
+.tabLink:hover {
+  background-color: #f1f3f4;
+  color: #202124;
+}
+
+.tabLink .material-icons {
+  font-size: 20px;
+}
+
+.activeTab {
+  color: #1a73e8;
+  border-bottom-color: #1a73e8;
+  background-color: #e8f0fe;
+}
+
+.activeTab:hover {
+  background-color: #d2e3fc;
+}
+
 /* ── Stats Row ─────────────────────────────────── */
 
 .statsRow {

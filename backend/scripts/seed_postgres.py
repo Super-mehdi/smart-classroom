@@ -9,7 +9,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Base, User, Class, AlertConfig, UserRole
+from models import Base, User, Class, AlertConfig, UserRole, Session as ClassroomSession, AttendanceRecord, Student
 
 engine = create_engine(os.environ["DATABASE_URL"])
 SessionLocal = sessionmaker(bind=engine)
@@ -20,11 +20,21 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
-# Clear existing seed data
+# Clear existing seed data (ORDER MATTERS due to foreign keys)
 print("Clearing existing data...")
+db.query(AttendanceRecord).delete()
+db.query(ClassroomSession).delete()
 db.query(AlertConfig).delete()
 db.query(Class).delete()
 db.query(User).delete()
+db.query(Student).delete()
+db.commit()
+
+# students
+print("Creating students...")
+s1 = Student(id="S001", name="mehdi")
+s2 = Student(id="S002", name="zakaria")
+db.add_all([s1, s2])
 db.commit()
 
 # users

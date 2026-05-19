@@ -32,6 +32,9 @@ const Layout = () => {
       { path: '/students', label: 'Students', icon: 'people' },
     ],
     superuser: [
+      { path: '/', label: 'Home', icon: 'home' },
+      { path: '/sessions', label: 'Sessions', icon: 'video_library' },
+      { path: '/students', label: 'Students', icon: 'people' },
       { path: '/admin', label: 'Admin', icon: 'admin_panel_settings' },
     ],
   };
