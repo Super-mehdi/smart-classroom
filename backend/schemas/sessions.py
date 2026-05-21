@@ -21,3 +21,9 @@ class SessionListItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+class SessionSummaryResponse(BaseModel):
+    session_id: int
+    summary_text: str
+    stats: dict
+    generated_at: datetime

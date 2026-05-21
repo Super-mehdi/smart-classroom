@@ -1,13 +1,19 @@
 import logging
+import os
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import List
 
 from db.session import get_db
-from models import User, Session as SessionModel, Class
+from db.mongo import get_mongo_db
+from models import User, Session as SessionModel, Class, Student, AttendanceRecord, AttendanceStatus
 from core.dependencies import get_current_user, require_teacher
-from schemas.sessions import SessionStartRequest, SessionResponse, SessionStopResponse, SessionListItem
+from schemas.sessions import (
+    SessionStartRequest, SessionResponse, SessionStopResponse, 
+    SessionListItem, SessionSummaryResponse
+)
 from tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -142,3 +148,120 @@ def stop_cv(
         logger.error(f"Failed to stop CV for session {session_id}: {e}")
         return {"status": "cv_stop_failed", "error": str(e)}
     return {"status": "cv_stopped"}
+
+@router.post("/{session_id}/summary", response_model=SessionSummaryResponse)
+async def generate_session_summary(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher)
+):
+    # 1. Check if summary already exists
+    mongo_db = get_mongo_db()
+    existing_summary = await mongo_db["session_summaries"].find_one({"session_id": session_id})
+    if existing_summary:
+        return {
+            "session_id": existing_summary["session_id"],
+            "summary_text": existing_summary["summary_text"],
+            "stats": existing_summary["stats"],
+            "generated_at": existing_summary["generated_at"]
+        }
+
+    # 2. Verify session exists
+    session_record = db.query(SessionModel).filter(SessionModel.id == session_id).first()
+    if not session_record:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # 3. Compute stats
+    # Attention stats from MongoDB
+    attn_pipeline = [
+        {"$match": {"session_id": session_id}},
+        {"$group": {
+            "_id": None,
+            "avg_score": {"$avg": "$score"}
+        }}
+    ]
+    attn_results = await mongo_db["attention_logs"].aggregate(attn_pipeline).to_list(length=1)
+    avg_attention = round(attn_results[0]["avg_score"], 4) if attn_results and attn_results[0]["avg_score"] is not None else 0
+
+    # Attendance stats from PostgreSQL
+    total_enrolled = db.query(Student).count()
+    present_count = db.query(AttendanceRecord).filter(
+        AttendanceRecord.session_id == session_id,
+        AttendanceRecord.status == AttendanceStatus.present
+    ).count()
+    attendance_rate = round((present_count / total_enrolled) * 100, 2) if total_enrolled > 0 else 0
+
+    stats = {
+        "avg_attention": avg_attention,
+        "attendance_rate": attendance_rate,
+        "present_students": present_count,
+        "total_students": total_enrolled
+    }
+
+    # 4. Call Groq API
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="GROQ_API_KEY not configured")
+
+    prompt = f"""
+    Please provide a concise and professional summary of the following classroom session for the teacher.
+    
+    Session ID: {session_id}
+    Average Attention Score: {avg_attention} (out of 1.0)
+    Attendance Rate: {attendance_rate}% ({present_count}/{total_enrolled} students present)
+    
+    The summary should highlight the overall engagement and attendance, and provide any general pedagogical advice based on these numbers.
+    """
+
+    groq_url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": [
+            {"role": "system", "content": "You are a helpful educational assistant providing session summaries for teachers."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            logger.info(f"Calling Groq API for session {session_id}")
+            response = await client.post(groq_url, headers=headers, json=payload, timeout=30.0)
+            if response.status_code != 200:
+                error_data = response.json()
+                msg = error_data.get("error", {}).get("message", "Unknown Groq error")
+                logger.error(f"Groq API returned {response.status_code}: {msg}")
+                # Fallback to a smaller model if 70b fails or is unavailable
+                logger.info("Retrying with llama-3.1-8b-instant...")
+                payload["model"] = "llama-3.1-8b-instant"
+                response = await client.post(groq_url, headers=headers, json=payload, timeout=30.0)
+                if response.status_code != 200:
+                    raise Exception(f"Groq primary and fallback failed. Last error: {msg}")
+            
+            response.raise_for_status()
+            data = response.json()
+            summary_text = data['choices'][0]['message']['content']
+        except Exception as e:
+            logger.error(f"Groq API call failed for session {session_id}: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to generate summary with Groq: {str(e)}")
+
+    # 5. Store in MongoDB
+    generated_at = datetime.utcnow()
+    summary_doc = {
+        "session_id": session_id,
+        "summary_text": summary_text,
+        "stats": stats,
+        "generated_at": generated_at
+    }
+    await mongo_db["session_summaries"].insert_one(summary_doc)
+
+    return {
+        "session_id": session_id,
+        "summary_text": summary_text,
+        "stats": stats,
+        "generated_at": generated_at
+    }

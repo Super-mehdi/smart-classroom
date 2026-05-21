@@ -72,6 +72,12 @@ export async function stopCVPipeline(sessionId, token) {
   }
 }
 
+export async function getSessionSummary(sessionId, token) {
+  return apiFetch(`/api/sessions/${sessionId}/summary`, {
+    method: "POST",
+  }, token);
+}
+
 export async function createUser({ name, email, password, role }, token) {
   return apiFetch("/api/auth/signup", {
     method: "POST",

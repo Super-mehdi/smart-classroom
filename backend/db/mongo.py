@@ -62,4 +62,12 @@ async def init_collections(db: AsyncIOMotorDatabase):
         unique=True   
     )
 
+    # session_summaries
+    if "session_summaries" not in existing:
+        await db.create_collection("session_summaries")
+    await db["session_summaries"].create_index(
+        [("session_id", 1)],
+        unique=True
+    )
+
     print("MongoDB collections and indexes ready")
