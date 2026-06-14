@@ -41,7 +41,7 @@ db.commit()
 print("Creating users...")
 
 teacher1 = User(
-    email="teacher1@smartclass.com",
+    email="marcelcarter1000@gmail.com",
     hashed_password=hash_password("teacher123"),
     full_name="Zakaria El Hiouile",
     role=UserRole.teacher,

@@ -19,7 +19,7 @@ class FaceMeshDetector:
         min_tracking_confidence: float = 0.5,
     ):
         base_options = python.BaseOptions(
-            model_asset_path=MODEL_PATH    # ← absolute path now
+            model_asset_path=MODEL_PATH    
         )
         options = vision.FaceLandmarkerOptions(
             base_options=base_options,

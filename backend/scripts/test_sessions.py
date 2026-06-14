@@ -7,7 +7,7 @@ def test_sessions():
     # 1. Login as teacher1
     print("Logging in as teacher1...")
     res = requests.post(f"{BASE_URL}/auth/login", json={
-        "email": "teacher1@smartclass.com",
+        "email": "marcelcarter1000@gmail.com",
         "password": "teacher123"
     })
     if res.status_code != 200:

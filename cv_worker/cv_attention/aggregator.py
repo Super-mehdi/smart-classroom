@@ -1,4 +1,3 @@
-from collections import defaultdict
 from typing import Optional
 from dataclasses import dataclass, field
 import time
@@ -26,7 +25,7 @@ class StudentScoreBuffer:
 class ScoreAggregator:
     def __init__(self, max_buffer: int = 30, stale_timeout: float = 5.0):
         self.max_buffer   = max_buffer
-        self.stale_timeout = stale_timeout  # NEW — remove after 5s unseen
+        self.stale_timeout = stale_timeout  
         self._buffers: dict[str, StudentScoreBuffer] = {}
 
     def add_frame_scores(self, scores: dict[str, float]):
@@ -38,7 +37,6 @@ class ScoreAggregator:
                 )
             self._buffers[student_id].add_score(score)
 
-        # NEW — remove faces not seen recently
         now = time.time()
         stale = [
             sid for sid, buf in self._buffers.items()
